@@ -1,0 +1,215 @@
+.app {
+  min-height: 100vh;
+  padding: 16px;
+  color: white;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 2.5em;
+  margin: 0 0 8px 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header p {
+  font-size: 1.1em;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-top: 4px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.user-info {
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.user-info h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.4em;
+}
+
+.user-info code {
+  background: rgba(0,0,0,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.balance-section {
+  margin-bottom: 24px;
+}
+
+.balance-card {
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.balance-card h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+  font-size: 1.3em;
+}
+
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 1.1em;
+}
+
+.features-section, .lottery-section, .referral-section {
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.features-section h3, .lottery-section h3, .referral-section h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+  font-size: 1.3em;
+}
+
+.ad-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ad-button {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.ad-button.main {
+  background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+}
+
+.ad-button.side {
+  background: linear-gradient(45deg, #feca57, #ff9ff3);
+}
+
+.ad-button.low {
+  background: linear-gradient(45deg, #48dbfb, #0abde3);
+}
+
+.ad-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.lottery-button, .share-button {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+}
+
+.lottery-button {
+  background: linear-gradient(45deg, #a55eea, #26de81);
+  color: white;
+}
+
+.lottery-button:disabled {
+  background: rgba(255,255,255,0.2);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.share-button {
+  background: linear-gradient(45deg, #fd79a8, #fdcb6e);
+  color: white;
+}
+
+.lottery-button:hover:not(:disabled), .share-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.lottery-info {
+  text-align: center;
+  margin: 12px 0 0 0;
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+.referral-section p {
+  text-align: center;
+  margin: 0 0 12px 0;
+  opacity: 0.9;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 32px;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.footer p {
+  margin: 4px 0;
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px;
+  }
+  
+  .header h1 {
+    font-size: 2em;
+  }
+  
+  .ad-button, .lottery-button, .share-button {
+    font-size: 1em;
+  }
+}
+
