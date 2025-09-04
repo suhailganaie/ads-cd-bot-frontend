@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Persisted state for balance (optional, balances are always synced with backend)
+// Optionally keep balance in localStorage, but always trust backend for point deduction!
 function usePersistedState(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
@@ -21,10 +21,11 @@ function usePersistedState(key, initialValue) {
 
 export default function App() {
   const [user, setUser] = useState(null);
+  // Gold points start as zero for new users
   const [balance, setBalance] = usePersistedState('balance', { normal: 0, gold: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Recommended: put backend URL in .env using REACT_APP_API_URL, but hardcoded here for demo
+  // Set your backend URL here or in .env file
   const API = process.env.REACT_APP_API_URL || 'https://ads-cd-bot-backend.onrender.com';
 
   useEffect(() => {
@@ -38,50 +39,47 @@ export default function App() {
     }
   }, []);
 
-  // Fetch balance from backend when user loads
+  // Always fetch live balance from backend after user info loads or after any mutating action
   useEffect(() => {
     if (!user) return;
     setIsLoading(true);
-
-    // Fetch balance from backend
     fetch(`${API}/balance`, {
       headers: {
-        Authorization: `tma ${window.Telegram.WebApp.initData}`
+        Authorization: `tma ${window.Telegram.WebApp.initData}`,
       }
     })
-    .then(res => res.json())
-    .then(data => {
-      setBalance({ normal: data.normal_points, gold: data.gold_points });
-      setIsLoading(false);
-    })
-    .catch(e => {
-      setIsLoading(false);
-      console.error('Error fetching balance:', e);
-    });
+      .then(res => res.json())
+      .then(data => {
+        setBalance({ normal: data.normal_points, gold: data.gold_points });
+        setIsLoading(false);
+      })
+      .catch(e => {
+        setIsLoading(false);
+        console.error('Error fetching balance:', e);
+      });
   }, [user]);
 
-  // --- Ad integration ---
+  // Ad SDK detection (use official function name for your SDK)
+  const hasSdk = () =>
+    typeof window !== 'undefined' && typeof window.show_9822309 === 'function';
 
-  // Check Ad SDK is loaded
-  const hasSdk = () => typeof window !== 'undefined' && typeof window.show_9822309 === 'function';
-
-  // Credit points for watched ad (calls backend)
+  // Function to credit points via backend after ads
   async function creditPoints(type) {
     try {
       const res = await fetch(`${API}/credit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `tma ${window.Telegram.WebApp.initData}`
+          Authorization: `tma ${window.Telegram.WebApp.initData}`,
         },
-        body: JSON.stringify({ adType: type })
+        body: JSON.stringify({ adType: type }),
       });
       const data = await res.json();
-      if (data.normal_points && data.gold_points !== undefined) {
+      if (data.normal_points !== undefined && data.gold_points !== undefined) {
         setBalance({ normal: data.normal_points, gold: data.gold_points });
       }
     } catch (e) {
-      console.error('Credit error', e);
+      console.error('Credit error:', e);
     }
   }
 
@@ -99,11 +97,11 @@ export default function App() {
     alert('You earned 2 points!');
   }
   function handleLowAds() {
-    alert('Low Ads give 1 point automatically on backend!');
+    alert('Low Ads (+1 point) awarded on backend!');
     creditPoints('low');
   }
 
-  // Buy lottery ticket via backend
+  // Buy ticket, always rely on backend response for points!
   async function handleBuyTicket() {
     if (balance.normal < 100) {
       alert('Need 100 points to buy a ticket!');
@@ -114,11 +112,12 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `tma ${window.Telegram.WebApp.initData}`
+          Authorization: `tma ${window.Telegram.WebApp.initData}`,
         },
-        body: JSON.stringify({ ticketCount: 1 })
+        body: JSON.stringify({ ticketCount: 1 }),
       });
       const data = await res.json();
+      // Always use backend for updated balance, gold points (if changed)
       setBalance({ normal: data.remaining_points, gold: balance.gold });
       alert('Lottery ticket purchased!');
     } catch (e) {
@@ -126,7 +125,6 @@ export default function App() {
     }
   }
 
-  // --- UI ---
   if (isLoading) {
     return (
       <div className="app">
@@ -144,12 +142,12 @@ export default function App() {
         <h1>🎯 ADS_CD_BOT</h1>
         <p>Ad Rewards Platform</p>
       </header>
-      {user &&
+      {user && (
         <div className="user-info">
           <h2>👋 Welcome, {user.first_name}!</h2>
           <p>User ID: <code>{user.id}</code></p>
         </div>
-      }
+      )}
       <div className="balance-section">
         <div className="balance-card">
           <h3>💰 Your Balance</h3>
