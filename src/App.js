@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import './App.css';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState({ normal: 0, gold: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [adTimerActive, setAdTimerActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [rewardTimerActive, setRewardTimerActive] = useState(false);
   const [canReward, setCanReward] = useState(false);
+  const [rewardTimerId, setRewardTimerId] = useState(null);
 
-  // Your backend endpoint; update as needed
-  const API = process.env.REACT_APP_API_URL || "https://ads-cd-bot-backend.onrender.com";
+  // Change to your actual backend endpoint
+  const API = process.env.REACT_APP_API_URL || 'https://ads-cd-bot-backend.onrender.com';
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -17,89 +18,130 @@ export default function App() {
       tg.ready();
       tg.expand();
       setUser(tg.initDataUnsafe?.user);
-      document.body.style.backgroundColor = tg.themeParams?.bg_color || "#667eea";
+      document.body.style.backgroundColor = tg.themeParams?.bg_color || '#667eea';
+    }
+    setLoading(false);
+
+    // In-App Interstitial setup (auto ads)
+    if (window.show_9822309) {
+      window.show_9822309({
+        type: 'inApp',
+        inAppSettings: {
+          frequency: 2,
+          capping: 0.1,
+          interval: 30,
+          timeout: 5,
+          everyPage: false
+        }
+      });
     }
   }, []);
 
-  // Always load balance from backend for current user
   useEffect(() => {
     if (!user) return;
-    setIsLoading(true);
     fetch(`${API}/balance`, {
-      headers: {
-        Authorization: `tma ${window.Telegram.WebApp.initData}`,
-      },
+      headers: { Authorization: `tma ${window.Telegram.WebApp.initData}` }
     })
       .then(res => res.json())
-      .then(data => {
-        setBalance({ normal: data.normal_points, gold: data.gold_points });
-        setIsLoading(false);
-      })
-      .catch(e => {
-        setIsLoading(false);
-        console.error("Fetch balance error:", e);
-      });
+      .then(data => setBalance({ normal: data.normal_points, gold: data.gold_points }))
+      .catch(e => console.error(e));
   }, [user]);
 
-  // Ad anti-cheat timer: must wait 15 seconds before credit is possible
-  const startAdTimer = () => {
-    setAdTimerActive(true);
+  const startRewardTimer = () => {
     setCanReward(false);
-    setTimeout(() => {
+    setRewardTimerActive(true);
+    const timer = setTimeout(() => {
       setCanReward(true);
-    }, 15000);
+    }, 15000); // 15 seconds
+    setRewardTimerId(timer);
   };
 
-  // Credits points only if canReward is true after 15s
-  async function creditPoints(type) {
-    if (!canReward) {
-      alert("You must watch the full ad for 15 seconds to earn points.");
-      return;
-    }
+  const clearRewardTimer = () => {
+    if (rewardTimerId) clearTimeout(rewardTimerId);
+    setRewardTimerId(null);
+    setCanReward(false);
+    setRewardTimerActive(false);
+  };
+
+  // Backend points credit, only after reward conditions
+  const creditReward = async (type) => {
     try {
       const res = await fetch(`${API}/credit`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `tma ${window.Telegram.WebApp.initData}`
         },
         body: JSON.stringify({ adType: type })
       });
-      if (!res.ok) throw new Error("Failed to credit");
+      if (!res.ok) throw new Error('Credit failed');
       const data = await res.json();
       setBalance({ normal: data.normal_points, gold: data.gold_points });
-      alert(`You earned ${type === "main" ? 4 : type === "side" ? 2 : 1} points!`);
-    } catch (e) {
-      console.error("Credit points error:", e);
-      alert("Error processing reward.");
+      alert(`You earned ${type === 'main' ? 4 : type === 'side' ? 2 : 1} points!`);
+    } catch (err) {
+      alert('Failed to credit reward');
+      console.error(err);
     } finally {
-      setAdTimerActive(false);
-      setCanReward(false);
+      clearRewardTimer();
     }
-  }
+  };
 
-  // Handler for ad button tap
-  async function handleAd(type) {
-    // For low ads, no timer: reward instantly
-    if (type === "low") {
-      await creditPoints("low");
+  // Handle Rewarded Popup (main ad)
+  const handleMainAd = () => {
+    if (!window.show_9822309) {
+      alert('Ad SDK not loaded!');
       return;
     }
-    if (adTimerActive) {
-      alert("Please wait for the timer to finish before trying again.");
+    startRewardTimer();
+    window.show_9822309('pop')
+      .then(() => {
+        if (canReward) {
+          creditReward('main');
+        } else {
+          alert('Watch ad for full 15s to earn reward!');
+        }
+      })
+      .catch(() => {
+        alert('Ad not completed, no reward.');
+        clearRewardTimer();
+      });
+  };
+
+  // Handle Rewarded Interstitial (side ad)
+  const handleSideAd = () => {
+    if (!window.show_9822309) {
+      alert('Ad SDK not loaded!');
       return;
     }
-    startAdTimer();
-    // Optionally show a loading spinner or countdown here
-    setTimeout(() => {
-      creditPoints(type);
-    }, 15000); // Only reward after 15 seconds
-  }
+    startRewardTimer();
+    window.show_9822309()
+      .then(() => {
+        if (canReward) {
+          creditReward('side');
+        } else {
+          alert('Watch ad for full 15s to earn reward!');
+        }
+      })
+      .catch(() => {
+        alert('Ad not completed, no reward.');
+        clearRewardTimer();
+      });
+  };
 
-  // Lottery ticket buying -- always update points from backend response
-  async function handleBuyTicket() {
+  // Low Ads (awarded automatically, if needed—timer not required)
+  const handleLowAd = () => {
+    if (!window.show_9822309) {
+      alert('Ad SDK not loaded!');
+      return;
+    }
+    // Ad shows in "inApp" mode automatically; you may want to increment 1pt by backend here if desired:
+    creditReward('low');
+  };
+
+  // Lottery ticket (backend validation)
+  const buyTicket = async () => {
     if (balance.normal < 100) {
-      alert("Need 100 points to buy a ticket!");
+      alert('Not enough points for ticket!');
       return;
     }
     try {
@@ -107,79 +149,53 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `tma ${window.Telegram.WebApp.initData}`,
+          Authorization: `tma ${window.Telegram.WebApp.initData}`
         },
-        body: JSON.stringify({ ticketCount: 1 }),
+        body: JSON.stringify({ ticketCount: 1 })
       });
-      if (!res.ok) throw new Error('Failed to buy ticket');
+      if (!res.ok) throw new Error('Ticket buy failed');
       const data = await res.json();
-      setBalance({ normal: data.remaining_points, gold: data.gold_points || balance.gold });
-      alert('Lottery ticket purchased!');
-    } catch (e) {
-      console.error('Ticket error', e);
-      alert('Error buying ticket.');
+      setBalance({ normal: data.remaining_points, gold: data.gold_points || 0 });
+      alert('Ticket purchased!');
+    } catch (err) {
+      alert('Failed to purchase ticket');
+      console.error(err);
     }
-  }
+  };
 
-  if (isLoading) {
-    return (
-      <div className="app">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Loading ADS_CD_BOT...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="app"><p>Loading...</p></div>;
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>🎯 ADS_CD_BOT</h1>
+      <header>
+        <h1>ADS BOT</h1>
         <p>Ad Rewards Platform</p>
       </header>
-      {user &&
-        <div className="user-info">
-          <h2>👋 Welcome, {user.first_name}!</h2>
-          <p>User ID: <code>{user.id}</code></p>
-        </div>
-      }
-      <div className="balance-section">
-        <div className="balance-card">
-          <h3>💰 Your Balance</h3>
-          <div className="balance-row">
-            <span>Normal Points: <strong>{balance.normal}</strong></span>
-          </div>
-          <div className="balance-row">
-            <span>Gold Points: <strong>{balance.gold}</strong></span>
-          </div>
-        </div>
-      </div>
-      <div className="features-section">
-        <h3>🎯 Earn Points by Watching Ads</h3>
-        <div className="ad-buttons">
-          <button className="ad-button main" onClick={() => handleAd("main")} disabled={adTimerActive}>Main Ads (+4 points)</button>
-          <button className="ad-button side" onClick={() => handleAd("side")} disabled={adTimerActive}>Side Ads (+2 points)</button>
-          <button className="ad-button low" onClick={() => handleAd("low")}>Low Ads (+1 point)</button>
-          {adTimerActive && <p>⏳ Please wait 15 seconds...</p>}
-        </div>
-      </div>
-      <div className="lottery-section">
-        <h3>🎫 Lottery System</h3>
-        <p>Buy tickets for monthly draws!</p>
-        <button
-          className="lottery-button"
-          onClick={handleBuyTicket}
-          disabled={balance.normal < 100}
-        >
-          Buy Ticket (100 points)
-        </button>
-        <p className="lottery-info">
-          Next draw: Monthly automatic selection
-        </p>
-      </div>
-      <footer className="footer">
-        <p>🤖 Powered by ADS_CD_BOT</p>
+      {user && (
+        <section>
+          <h2>Welcome, {user.first_name}</h2>
+          <p>User ID: {user.id}</p>
+        </section>
+      )}
+      <section>
+        <h3>Your Balance</h3>
+        <p>Normal Points: {balance.normal}</p>
+        <p>Gold Points: {balance.gold}</p>
+      </section>
+      <section>
+        <h3>Earn Points by Watching Ads</h3>
+        <button onClick={handleMainAd} disabled={rewardTimerActive}>Main Ads (+4)</button>
+        <button onClick={handleSideAd} disabled={rewardTimerActive}>Side Ads (+2)</button>
+        <button onClick={handleLowAd}>Low Ads (+1) — Auto</button>
+        {rewardTimerActive && <p>⏳ Please wait 15 seconds while ad is running...</p>}
+      </section>
+      <section>
+        <h3>Lottery System</h3>
+        <button onClick={buyTicket} disabled={balance.normal < 100}>Buy Ticket (100)</button>
+        <p>Next draw: Monthly automatic</p>
+      </section>
+      <footer>
+        <p>Powered by ADS BOT</p>
         <p>Built with React & Telegram Mini Apps</p>
       </footer>
     </div>
