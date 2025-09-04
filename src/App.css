@@ -4,19 +4,18 @@
   color: white;
   max-width: 500px;
   margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 .header {
   text-align: center;
   margin-bottom: 24px;
 }
-
 .header h1 {
   font-size: 2.5em;
   margin: 0 0 8px 0;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
-
 .header p {
   font-size: 1.1em;
   margin: 0;
@@ -55,12 +54,10 @@
   text-align: center;
   backdrop-filter: blur(10px);
 }
-
 .user-info h2 {
   margin: 0 0 8px 0;
   font-size: 1.4em;
 }
-
 .user-info code {
   background: rgba(0,0,0,0.2);
   padding: 4px 8px;
@@ -71,7 +68,6 @@
 .balance-section {
   margin-bottom: 24px;
 }
-
 .balance-card {
   background: rgba(255,255,255,0.15);
   border-radius: 12px;
@@ -79,13 +75,11 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
 }
-
 .balance-card h3 {
   margin: 0 0 16px 0;
   text-align: center;
   font-size: 1.3em;
 }
-
 .balance-row {
   display: flex;
   justify-content: space-between;
@@ -101,19 +95,16 @@
   margin-bottom: 20px;
   backdrop-filter: blur(10px);
 }
-
 .features-section h3, .lottery-section h3, .referral-section h3 {
   margin: 0 0 16px 0;
   text-align: center;
   font-size: 1.3em;
 }
-
 .ad-buttons {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-
 .ad-button {
   padding: 14px 20px;
   border: none;
@@ -124,24 +115,19 @@
   transition: all 0.3s ease;
   color: white;
 }
-
 .ad-button.main {
   background: linear-gradient(45deg, #ff6b6b, #ee5a24);
 }
-
 .ad-button.side {
   background: linear-gradient(45deg, #feca57, #ff9ff3);
 }
-
 .ad-button.low {
   background: linear-gradient(45deg, #48dbfb, #0abde3);
 }
-
 .ad-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-
 .lottery-button, .share-button {
   width: 100%;
   padding: 16px;
@@ -153,48 +139,40 @@
   transition: all 0.3s ease;
   margin-top: 12px;
 }
-
 .lottery-button {
   background: linear-gradient(45deg, #a55eea, #26de81);
   color: white;
 }
-
 .lottery-button:disabled {
   background: rgba(255,255,255,0.2);
   cursor: not-allowed;
   transform: none;
 }
-
 .share-button {
   background: linear-gradient(45deg, #fd79a8, #fdcb6e);
   color: white;
 }
-
 .lottery-button:hover:not(:disabled), .share-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-
 .lottery-info {
   text-align: center;
   margin: 12px 0 0 0;
   opacity: 0.8;
   font-size: 0.9em;
 }
-
 .referral-section p {
   text-align: center;
   margin: 0 0 12px 0;
   opacity: 0.9;
 }
-
 .footer {
   text-align: center;
   margin-top: 32px;
   opacity: 0.7;
   font-size: 0.9em;
 }
-
 .footer p {
   margin: 4px 0;
 }
@@ -203,13 +181,10 @@
   .app {
     padding: 12px;
   }
-  
   .header h1 {
     font-size: 2em;
   }
-  
   .ad-button, .lottery-button, .share-button {
     font-size: 1em;
   }
 }
-
