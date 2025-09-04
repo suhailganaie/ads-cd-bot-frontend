@@ -9,7 +9,6 @@ export default function App() {
   const [canReward, setCanReward] = useState(false);
   const [rewardTimerId, setRewardTimerId] = useState(null);
 
-  // Change to your actual backend endpoint
   const API = process.env.REACT_APP_API_URL || 'https://ads-cd-bot-backend.onrender.com';
 
   useEffect(() => {
@@ -22,7 +21,6 @@ export default function App() {
     }
     setLoading(false);
 
-    // In-App Interstitial setup (auto ads)
     if (window.show_9822309) {
       window.show_9822309({
         type: 'inApp',
@@ -52,7 +50,7 @@ export default function App() {
     setRewardTimerActive(true);
     const timer = setTimeout(() => {
       setCanReward(true);
-    }, 15000); // 15 seconds
+    }, 15000);
     setRewardTimerId(timer);
   };
 
@@ -63,7 +61,6 @@ export default function App() {
     setRewardTimerActive(false);
   };
 
-  // Backend points credit, only after reward conditions
   const creditReward = async (type) => {
     try {
       const res = await fetch(`${API}/credit`, {
@@ -86,7 +83,7 @@ export default function App() {
     }
   };
 
-  // Handle Rewarded Popup (main ad)
+  // Main Ads (Rewarded Popup)
   const handleMainAd = () => {
     if (!window.show_9822309) {
       alert('Ad SDK not loaded!');
@@ -107,7 +104,7 @@ export default function App() {
       });
   };
 
-  // Handle Rewarded Interstitial (side ad)
+  // Side Ads (Rewarded Interstitial)
   const handleSideAd = () => {
     if (!window.show_9822309) {
       alert('Ad SDK not loaded!');
@@ -128,13 +125,12 @@ export default function App() {
       });
   };
 
-  // Low Ads (awarded automatically, if needed—timer not required)
+  // Low Ads (awarded automatically)
   const handleLowAd = () => {
     if (!window.show_9822309) {
       alert('Ad SDK not loaded!');
       return;
     }
-    // Ad shows in "inApp" mode automatically; you may want to increment 1pt by backend here if desired:
     creditReward('low');
   };
 
@@ -163,38 +159,56 @@ export default function App() {
     }
   };
 
-  if (loading) return <div className="app"><p>Loading...</p></div>;
+  if (loading) {
+    return (
+      <div className="app">
+        <div className="loading">
+          <div className="spinner"></div>
+          <p>Loading ADS_CD_BOT...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
-      <header>
+      <header className="header">
         <h1>ADS BOT</h1>
         <p>Ad Rewards Platform</p>
       </header>
       {user && (
-        <section>
-          <h2>Welcome, {user.first_name}</h2>
-          <p>User ID: {user.id}</p>
-        </section>
+        <div className="user-info">
+          <h2>Welcome, {user.first_name}!</h2>
+          <p>User ID: <code>{user.id}</code></p>
+        </div>
       )}
-      <section>
-        <h3>Your Balance</h3>
-        <p>Normal Points: {balance.normal}</p>
-        <p>Gold Points: {balance.gold}</p>
-      </section>
-      <section>
-        <h3>Earn Points by Watching Ads</h3>
-        <button onClick={handleMainAd} disabled={rewardTimerActive}>Main Ads (+4)</button>
-        <button onClick={handleSideAd} disabled={rewardTimerActive}>Side Ads (+2)</button>
-        <button onClick={handleLowAd}>Low Ads (+1) — Auto</button>
-        {rewardTimerActive && <p>⏳ Please wait 15 seconds while ad is running...</p>}
-      </section>
-      <section>
-        <h3>Lottery System</h3>
-        <button onClick={buyTicket} disabled={balance.normal < 100}>Buy Ticket (100)</button>
-        <p>Next draw: Monthly automatic</p>
-      </section>
-      <footer>
+      <div className="balance-section">
+        <div className="balance-card">
+          <h3>💰 Your Balance</h3>
+          <div className="balance-row">
+            <span>Normal Points: <strong>{balance.normal}</strong></span>
+          </div>
+          <div className="balance-row">
+            <span>Gold Points: <strong>{balance.gold}</strong></span>
+          </div>
+        </div>
+      </div>
+      <div className="features-section">
+        <h3>🎯 Earn Points by Watching Ads</h3>
+        <div className="ad-buttons">
+          <button className="ad-button main" onClick={handleMainAd} disabled={rewardTimerActive}>Main Ads (+4 points)</button>
+          <button className="ad-button side" onClick={handleSideAd} disabled={rewardTimerActive}>Side Ads (+2 points)</button>
+          <button className="ad-button low" onClick={handleLowAd}>Low Ads (+1 point)</button>
+          {rewardTimerActive && <p>⏳ Please wait 15 seconds while ad is running...</p>}
+        </div>
+      </div>
+      <div className="lottery-section">
+        <h3>🎫 Lottery System</h3>
+        <p>Buy tickets for monthly draws!</p>
+        <button className="lottery-button" onClick={buyTicket} disabled={balance.normal < 100}>Buy Ticket (100 points)</button>
+        <p className="lottery-info">Next draw: Monthly automatic selection</p>
+      </div>
+      <footer className="footer">
         <p>Powered by ADS BOT</p>
         <p>Built with React & Telegram Mini Apps</p>
       </footer>
