@@ -5,6 +5,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState({ normal: 0, gold: 0 });
   const [loading, setLoading] = useState(true);
+  const [rewardInProgress, setRewardInProgress] = useState(false);
 
   const API = process.env.REACT_APP_API_URL || 'https://ads-cd-bot-backend.onrender.com';
 
@@ -18,7 +19,7 @@ export default function App() {
     }
     setLoading(false);
 
-    // Start In-App Interstitial (auto ads, optional)
+    // In-App Interstitial (auto show, no reward)
     if (window.show_9822309) {
       window.show_9822309({
         type: 'inApp',
@@ -45,47 +46,8 @@ export default function App() {
       .catch(e => console.error(e));
   }, [user]);
 
-  // Main Ads (Rewarded Popup)
-  const handleMainAd = () => {
-    if (!window.show_9822309) {
-      alert('Ad SDK not loaded!');
-      return;
-    }
-    window.show_9822309('pop')
-      .then(() => {
-        creditReward('main');
-      })
-      .catch(() => {
-        alert('Ad not completed, no reward.');
-      });
-  };
-
-  // Side Ads (Rewarded Interstitial)
-  const handleSideAd = () => {
-    if (!window.show_9822309) {
-      alert('Ad SDK not loaded!');
-      return;
-    }
-    window.show_9822309()
-      .then(() => {
-        creditReward('side');
-      })
-      .catch(() => {
-        alert('Ad not completed, no reward.');
-      });
-  };
-
-  // Low Ads
-  const handleLowAd = () => {
-    if (!window.show_9822309) {
-      alert('Ad SDK not loaded!');
-      return;
-    }
-    creditReward('low');
-  };
-
   // Backend points credit
-  const creditReward = async (type) => {
+  const creditReward = async (type, points) => {
     try {
       const res = await fetch(`${API}/credit`, {
         method: 'POST',
@@ -98,39 +60,37 @@ export default function App() {
       if (!res.ok) throw new Error('Credit failed');
       const data = await res.json();
       setBalance({ normal: data.normal_points, gold: data.gold_points });
-      alert(`You earned ${type === 'main' ? 4 : type === 'side' ? 2 : 1} points!`);
+      alert(`Earned ${points} points!`);
     } catch (err) {
       alert('Failed to credit reward');
       console.error(err);
     }
   };
 
-  // Lottery ticket
-  const buyTicket = async () => {
-    if (balance.normal < 100) {
-      alert('Not enough points for ticket!');
-      return;
-    }
+  // Rewarded Interstitial
+  const handleInterstitialAd = async () => {
+    if (rewardInProgress) return;
+    setRewardInProgress(true);
     try {
-      const res = await fetch(`${API}/buy-tickets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `tma ${window.Telegram.WebApp.initData}`
-        },
-        body: JSON.stringify({ ticketCount: 1 })
-      });
-      if (!res.ok) throw new Error('Ticket buy failed');
-      const data = await res.json();
-      setBalance({
-        normal: data.remaining_points,
-        gold: data.gold_points || balance.gold
-      });
-      alert('Ticket purchased!');
+      await window.show_9822309();
+      await creditReward('interstitial', 1);
     } catch (err) {
-      alert('Failed to purchase ticket');
-      console.error(err);
+      alert('Ad not completed or failed.');
     }
+    setRewardInProgress(false);
+  };
+
+  // Rewarded Popup
+  const handlePopupAd = async () => {
+    if (rewardInProgress) return;
+    setRewardInProgress(true);
+    try {
+      await window.show_9822309('pop');
+      await creditReward('popup', 2);
+    } catch (err) {
+      alert('Ad not completed or failed.');
+    }
+    setRewardInProgress(false);
   };
 
   if (loading) {
@@ -150,12 +110,12 @@ export default function App() {
         <h1>ADS BOT</h1>
         <p>Ad Rewards Platform</p>
       </header>
-      {user && (
+      {user &&
         <div className="user-info">
           <h2>Welcome, {user.first_name}!</h2>
           <p>User ID: <code>{user.id}</code></p>
         </div>
-      )}
+      }
       <div className="balance-section">
         <div className="balance-card">
           <h3>💰 Your Balance</h3>
@@ -168,18 +128,23 @@ export default function App() {
         </div>
       </div>
       <div className="features-section">
-        <h3>🎯 Earn Points by Watching Ads</h3>
+        <h3>Earn Points</h3>
         <div className="ad-buttons">
-          <button className="ad-button main" onClick={handleMainAd}>Main Ads (+4 points)</button>
-          <button className="ad-button side" onClick={handleSideAd}>Side Ads (+2 points)</button>
-          <button className="ad-button low" onClick={handleLowAd}>Low Ads (+1 point)</button>
+          <button
+            className="ad-button popup"
+            onClick={handlePopupAd}
+            disabled={rewardInProgress}
+          >
+            Earn Points (2)
+          </button>
+          <button
+            className="ad-button interstitial"
+            onClick={handleInterstitialAd}
+            disabled={rewardInProgress}
+          >
+            Earn Points (1)
+          </button>
         </div>
-      </div>
-      <div className="lottery-section">
-        <h3>🎫 Lottery System</h3>
-        <p>Buy tickets for monthly draws!</p>
-        <button className="lottery-button" onClick={buyTicket} disabled={balance.normal < 100}>Buy Ticket (100 points)</button>
-        <p className="lottery-info">Next draw: Monthly automatic selection</p>
       </div>
       <footer className="footer">
         <p>Powered by ADS BOT</p>
