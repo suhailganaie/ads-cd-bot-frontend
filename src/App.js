@@ -1,58 +1,93 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
-function App() {
+// Persisted state for balance
+function usePersistedState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : initialValue;
+    } catch {
+      return initialValue;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }, [key, value]);
+  return [value, setValue];
+}
+
+export default function App() {
   const [user, setUser] = useState(null);
-  const [balance, setBalance] = useState({ normal: 0, gold: 10 });
+  const [balance, setBalance] = usePersistedState('balance', { normal: 0, gold: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize Telegram Web App
+    // Telegram Mini App initialization and theme
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
-      
-      // Get user data from Telegram
       const userData = tg.initDataUnsafe?.user;
-      if (userData) {
-        setUser(userData);
-      }
-      
-      // Apply Telegram theme
-      document.body.style.backgroundColor = tg.backgroundColor || '#667eea';
+      if (userData) setUser(userData);
+      document.body.style.backgroundColor = tg.themeParams?.bg_color || '#667eea';
     }
-    
     setIsLoading(false);
   }, []);
 
-  const handleAdWatch = (adType) => {
-    const points = adType === 'main' ? 4 : adType === 'side' ? 2 : 1;
-    setBalance(prev => ({ ...prev, normal: prev.normal + points }));
-    
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.showAlert(`You earned ${points} points! 🎉`);
-    } else {
-      alert(`You earned ${points} points! 🎉`);
-    }
+  // SDK guard
+  const hasSdk = () =>
+    typeof window !== 'undefined' && typeof window.show_9822309 === 'function';
+
+  // Main Ads (Rewarded Popup, +4 pts)
+  const handleMainAds = async () => {
+    if (!hasSdk()) return alert('Ad SDK not loaded yet.');
+    try {
+      await window.show_9822309('pop');
+      setBalance(prev => ({ ...prev, normal: prev.normal + 4 }));
+      alert('You earned 4 points!');
+    } catch {}
   };
 
+  // Side Ads (Rewarded Interstitial, +2 pts)
+  const handleSideAds = async () => {
+    if (!hasSdk()) return alert('Ad SDK not loaded yet.');
+    try {
+      await window.show_9822309();
+      setBalance(prev => ({ ...prev, normal: prev.normal + 2 }));
+      alert('You earned 2 points!');
+    } catch {}
+  };
+
+  // Automatically show In-App Interstitials (+1 pt by timer)
+  useEffect(() => {
+    if (!hasSdk()) return;
+    window.show_9822309({
+      type: 'inApp',
+      inAppSettings: {
+        frequency: 2,
+        capping: 0.1,
+        interval: 30,
+        timeout: 5,
+        everyPage: false
+      }
+    });
+    // After ~35sec, automatically credit 1 point
+    const timer = setTimeout(() => {
+      setBalance(prev => ({ ...prev, normal: prev.normal + 1 }));
+    }, 35000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleBuyTicket = () => {
-    if (balance.normal >= 100) {
-      setBalance(prev => ({ ...prev, normal: prev.normal - 100 }));
-      
-      if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.showAlert('Lottery ticket purchased! 🎫');
-      } else {
-        alert('Lottery ticket purchased! 🎫');
-      }
-    } else {
-      if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.showAlert('Need 100 points to buy a ticket!');
-      } else {
-        alert('Need 100 points to buy a ticket!');
-      }
+    if (balance.normal < 100) {
+      alert('Need 100 points to buy a ticket!');
+      return;
     }
+    setBalance(prev => ({ ...prev, normal: prev.normal - 100 }));
+    alert('Lottery ticket purchased!');
   };
 
   if (isLoading) {
@@ -95,21 +130,21 @@ function App() {
       <div className="features-section">
         <h3>🎯 Earn Points by Watching Ads</h3>
         <div className="ad-buttons">
-          <button 
-            className="ad-button main" 
-            onClick={() => handleAdWatch('main')}
+          <button
+            className="ad-button main"
+            onClick={handleMainAds}
           >
             Main Ads (+4 points)
           </button>
-          <button 
-            className="ad-button side" 
-            onClick={() => handleAdWatch('side')}
+          <button
+            className="ad-button side"
+            onClick={handleSideAds}
           >
             Side Ads (+2 points)
           </button>
-          <button 
-            className="ad-button low" 
-            onClick={() => handleAdWatch('low')}
+          <button
+            className="ad-button low"
+            onClick={() => alert('Low Ads awarded automatically. Just use the app!')}
           >
             Low Ads (+1 point)
           </button>
@@ -119,8 +154,8 @@ function App() {
       <div className="lottery-section">
         <h3>🎫 Lottery System</h3>
         <p>Buy tickets for monthly draws!</p>
-        <button 
-          className="lottery-button" 
+        <button
+          className="lottery-button"
           onClick={handleBuyTicket}
           disabled={balance.normal < 100}
         >
@@ -131,22 +166,6 @@ function App() {
         </p>
       </div>
 
-      <div className="referral-section">
-        <h3>📢 Share & Earn</h3>
-        <p>Invite friends to earn more rewards!</p>
-        <button 
-          className="share-button"
-          onClick={() => {
-            if (window.Telegram?.WebApp) {
-              const shareText = `🎯 Join ADS_CD_BOT and earn points by watching ads!\n\n💰 Get 10 Gold Points for signing up\n🎫 Monthly lottery draws\n📱 Easy to use Mini App\n\nJoin me: https://t.me/ADS_Cd_bot?start=${user?.id || ''}`;
-              window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=https://t.me/ADS_Cd_bot&text=${encodeURIComponent(shareText)}`);
-            }
-          }}
-        >
-          📱 Share with Friends
-        </button>
-      </div>
-
       <footer className="footer">
         <p>🤖 Powered by ADS_CD_BOT</p>
         <p>Built with React & Telegram Mini Apps</p>
@@ -154,6 +173,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
-
