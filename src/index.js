@@ -1,9 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './App.css';
+import { createRoot } from 'react-dom/client';
+import './styles/App.css';
 import App from './App';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+// Mount React into the root div created in public/index.html
+const container = document.getElementById('root');
+const root = createRoot(container);
+
+// Keep index minimal; all app logic/UI lives in App.jsx
 root.render(
   <React.StrictMode>
     <App />
