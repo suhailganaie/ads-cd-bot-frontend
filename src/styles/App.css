@@ -1,1 +1,178 @@
+/* Base layout */
+:root {
+  --bg-start: #667eea;
+  --bg-end: #764ba2;
+  --card-bg: rgba(255, 255, 255, 0.12);
+  --card-border: rgba(255, 255, 255, 0.18);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.85);
+  --accent: #7cf5ff;
+  --success: #22c55e;
+  --warn: #f97316;
+  --danger: #ef4444;
+}
 
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App container */
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Cards and sections */
+.balance-section,
+.features-section,
+.lottery-section {
+  margin: 16px 0;
+}
+
+.balance-card,
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+}
+
+.balance-card h3,
+.card h3 {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.15);
+}
+.balance-row:last-child { border-bottom: 0; }
+
+/* Buttons */
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+}
+
+.ad-buttons {
+  display: grid;
+  gap: 12px;
+}
+
+.ad-button {
+  width: 100%;
+  padding: 14px 16px;
+  color: #111827;
+  font-weight: 700;
+  border-radius: 12px;
+  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.ad-button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.ad-button:active {
+  transform: translateY(1px);
+}
+
+.ad-button.main {
+  background: linear-gradient(90deg, #ff6a3d, #ff2d20);
+  color: white;
+}
+
+.ad-button.side {
+  background: linear-gradient(90deg, #ffd166, #fca5f1);
+}
+
+.ad-button.low {
+  background: linear-gradient(90deg, #2dd4bf, #22d3ee);
+}
+
+/* Header, nav, user info */
+.header {
+  text-align: center;
+  margin: 8px 0 16px;
+}
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: .5px;
+}
+.header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.user-info {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+
+/* Loader */
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  text-align: center;
+}
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Lottery CTA */
+.primary-cta {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #a78bfa, #34d399);
+  color: #0b1020;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+
+/* Utilities */
+.center { text-align: center; }
+.muted { color: var(--muted); }
+
+/* Responsive tweaks */
+@media (min-width: 480px) {
+  .ad-buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 720px) {
+  .app { padding: 20px; }
+}
