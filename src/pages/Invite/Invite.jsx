@@ -1,12 +1,14 @@
+// src/pages/Invite/Invite.jsx
 import { useMemo, useState } from 'react';
+
 export default function Invite() {
-  // Generate/receive a referral code; replace with real user code when available
+  // TODO: replace with real user referral code from state/API
   const referralCode = 'ABC123';
   const link = useMemo(() => `https://example.com/r/${referralCode}`, [referralCode]);
 
   const [copied, setCopied] = useState(false);
 
-  const copy = async () => {
+  const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
@@ -45,7 +47,7 @@ export default function Invite() {
         />
         <button
           type="button"
-          onClick={copy}
+          onClick={copyToClipboard}
           style={{
             padding: '10px 12px',
             borderRadius: 8,
@@ -63,8 +65,8 @@ export default function Invite() {
       <div className="card" style={{ marginTop: 16 }}>
         <h3 style={{ marginTop: 0 }}>Tips</h3>
         <ul style={{ margin: '8px 0 0 16px' }}>
-          <li>Offer a bonus to both inviter and friend to increase conversions.</li>
-          <li>Add a clear CTA and show progress toward rewards.</li>
+          <li>Offer a bonus to both inviter and friend for better conversions.</li>
+          <li>Keep a clear CTA and show progress toward rewards.</li>
           <li>Display recent successful invites for social proof.</li>
         </ul>
       </div>
