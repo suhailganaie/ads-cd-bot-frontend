@@ -4,27 +4,31 @@ import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
 export default function App() {
+  // Telegram WebApp guard
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    tg?.ready();
-    tg?.expand();
-  }, []); // Telegram sizing inside Mini Apps
+    const tg = window?.Telegram?.WebApp;
+    if (tg && typeof tg.ready === 'function') tg.ready();
+    if (tg && typeof tg.expand === 'function') tg.expand();
+  }, []); // avoid TypeErrors when opened outside Telegram [web:1214]
 
+  // Global in‑app interstitial init (guarded)
   useEffect(() => {
-    if (typeof window.show_9822309 !== 'function') return;
-    try {
-      window.show_9822309({
-        type: 'inApp',
-        inAppSettings: {
-          frequency: 2,
-          capping: 0.1,
-          interval: 30,
-          timeout: 5,
-          everyPage: false
-        }
-      });
-    } catch {}
-  }, []); // Global in‑app interstitial init
+    const show = window?.show_9822309;
+    if (typeof show === 'function') {
+      try {
+        show({
+          type: 'inApp',
+          inAppSettings: {
+            frequency: 2,
+            capping: 0.1,
+            interval: 30,
+            timeout: 5,
+            everyPage: false
+          }
+        });
+      } catch {}
+    }
+  }, []); // prevent blank screen if SDK not ready [web:1101][web:1214]
 
   return (
     <BrowserRouter>
