@@ -1,4 +1,3 @@
-// src/pages/Lottery/Lottery.jsx
 export default function Lottery() {
   return (
     <div className="card">
