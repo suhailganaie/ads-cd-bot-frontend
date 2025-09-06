@@ -20,7 +20,7 @@ export default function App() {
         show({
           type: 'inApp',
           inAppSettings: {
-            frequency: 2,
+            frequency: 1,
             capping: 0.1,
             interval: 30,
             timeout: 5,
