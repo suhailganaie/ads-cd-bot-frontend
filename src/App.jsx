@@ -4,14 +4,12 @@ import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
 export default function App() {
-  // Telegram Mini App: ready + expand for correct viewport inside Telegram
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     tg?.ready();
     tg?.expand();
-  }, []); // Recommended to ensure proper sizing within Telegram client [web:1202][web:894]
+  }, []); // Telegram sizing inside Mini Apps
 
-  // Global In‑App Interstitial initializer (auto ads, no buttons)
   useEffect(() => {
     if (typeof window.show_9822309 !== 'function') return;
     try {
@@ -25,10 +23,8 @@ export default function App() {
           everyPage: false
         }
       });
-    } catch {
-      // ignore if SDK not ready; this format is passive and non-blocking
-    }
-  }, []); // Mirrors Monetag’s in‑app interstitial setup for Mini Apps [web:1198][web:1101]
+    } catch {}
+  }, []); // Global in‑app interstitial init
 
   return (
     <BrowserRouter>
@@ -38,7 +34,6 @@ export default function App() {
           <p className="muted">Ad Rewards Platform</p>
         </header>
 
-        {/* Home content (no ad action buttons here) */}
         <section className="card balance-section">
           <h3>Welcome</h3>
           <p className="muted">
@@ -46,7 +41,6 @@ export default function App() {
           </p>
         </section>
 
-        {/* Routed pages (e.g., /earn, /tasks) render below */}
         <AppRoutes />
       </div>
     </BrowserRouter>
