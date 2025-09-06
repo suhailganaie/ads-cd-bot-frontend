@@ -1,4 +1,3 @@
-// src/pages/Invite/Invite.jsx
 import { useMemo, useState } from 'react';
 
 export default function Invite() {
