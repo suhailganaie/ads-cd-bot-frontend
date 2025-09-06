@@ -56,6 +56,21 @@ export default function App() {
 
         {/* Route outlet */}
         <AppRoutes />
+        {/* Bottom navigation */}
+<nav className="bottom-nav">
+  <Link to="/" className="nav-item">
+    <span className="nav-label">Home</span>
+  </Link>
+  <Link to="/earn" className="nav-item">
+    <span className="nav-label">Earn</span>
+  </Link>
+  <Link to="/tasks" className="nav-item">
+    <span className="nav-label">Tasks</span>
+  </Link>
+  <Link to="/invite" className="nav-item">
+    <span className="nav-label">Invite</span>
+  </Link>
+</nav>
       </div>
     </BrowserRouter>
   );
