@@ -9,7 +9,7 @@ export default defineConfig({
         target: 'https://ads-cd-bot-backend.onrender.com',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (p) => p.replace(/^\/api/, '')
       }
     }
   }
