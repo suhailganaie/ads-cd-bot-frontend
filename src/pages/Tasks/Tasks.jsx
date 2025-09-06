@@ -4,7 +4,7 @@ export default function Tasks() {
   return (
     <div className="card">
       <h3>Tasks</h3>
-      <p className="muted">Placeholder page. Build features here later.</p>
+      <p className="muted">Daily tasks and offers will appear here.</p>
     </div>
   );
 }
