@@ -39,6 +39,16 @@ export default function App() {
           <p className="muted">Ad Rewards Platform</p>
 
           {/* Simple navigation to pages */}
+                    
+        </header>
+
+        <section className="card balance-section">
+          <h3>Welcome</h3>
+          <p className="muted">
+            Explore features from the menu. Auto interstitial ads may appear during usage.
+          </p>
+        </section>
+        
         {/* Route outlet */}
         <AppRoutes />
         {/* Bottom navigation */}
