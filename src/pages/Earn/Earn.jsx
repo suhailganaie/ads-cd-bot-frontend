@@ -5,6 +5,7 @@ export default function Earn() {
   const timer = useRef();
 
   const canShow = cooldown === 0;
+
   const startCooldown = () => {
     setCooldown(15);
     clearInterval(timer.current);
