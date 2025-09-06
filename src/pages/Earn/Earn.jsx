@@ -43,10 +43,10 @@ export default function Earn() {
       <h3>🎯 Earn Points by Watching Ads</h3>
       <div className="ad-buttons">
         <button className="ad-button main" onClick={popup} disabled={!canShow}>
-          Main Ads (+2 points) {cooldown ? `• ${cooldown}s` : ''}
+          EARN(2) {cooldown ? `• ${cooldown}s` : ''}
         </button>
         <button className="ad-button side" onClick={interstitial} disabled={!canShow}>
-          Side Ads (+1 point) {cooldown ? `• ${cooldown}s` : ''}
+          EARN (1) {cooldown ? `• ${cooldown}s` : ''}
         </button>
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
