@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect } from 'react';
-import { BrowserRouter, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter, Link } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
@@ -10,7 +10,7 @@ export default function App() {
     const tg = window?.Telegram?.WebApp;
     if (tg && typeof tg.ready === 'function') tg.ready();
     if (tg && typeof tg.expand === 'function') tg.expand();
-  }, []); // Guards prevent TypeErrors that can cause blank screens in production [web:49]
+  }, []); // Guards prevent TypeErrors that can cause blank screens in production [web:1214]
 
   // Monetag SDK: guard the global to avoid crashes if not loaded
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function App() {
         show({
           type: 'inApp',
           inAppSettings: {
-            frequency: 1,
+            frequency: 2,
             capping: 0.1,
             interval: 30,
             timeout: 5,
@@ -29,7 +29,7 @@ export default function App() {
         });
       } catch {}
     }
-  }, []); // Defensive init per SDK behavior; prevents runtime errors when the global isn't ready [web:49]
+  }, []); // Defensive init per SDK behavior; prevents runtime errors when the global isn't ready [web:1101][web:1214]
 
   return (
     <BrowserRouter>
@@ -38,7 +38,7 @@ export default function App() {
           <h1>ADS BOT</h1>
           <p className="muted">Ad Rewards Platform</p>
 
-          {/* Simple navigation to pages (kept) */}
+          {/* Simple navigation to pages */}
           <nav className="card" style={{ marginTop: 12, padding: 10, display: 'flex', gap: 12 }}>
             <Link to="/" className="muted">Home</Link>
             <Link to="/earn" className="muted">Earn</Link>
@@ -53,27 +53,8 @@ export default function App() {
           </p>
         </section>
 
-        {/* Route outlet (kept) */}
+        {/* Route outlet */}
         <AppRoutes />
-
-        {/* NEW: Fixed Bottom Navigation (5 tabs) */}
-        <nav className="bottom-nav" aria-label="Bottom">
-          <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            Home
-          </NavLink>
-          <NavLink to="/earn" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            Earn
-          </NavLink>
-          <NavLink to="/tasks" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            Tasks
-          </NavLink>
-          <NavLink to="/lottery" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            Lottery
-          </NavLink>
-          <NavLink to="/invite" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            Invite
-          </NavLink>
-        </nav>
       </div>
     </BrowserRouter>
   );
