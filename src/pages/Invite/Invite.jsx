@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-
 export default function Invite() {
   // Generate/receive a referral code; replace with real user code when available
   const referralCode = 'ABC123';
