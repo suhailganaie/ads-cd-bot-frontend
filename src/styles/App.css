@@ -121,3 +121,15 @@ button:disabled {
   background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
   border-color: rgba(255,255,255,0.26);
 }
+
+/* styles/App.css */
+.card.rich-text {
+  white-space: pre-line;       /* keep \n line breaks, collapse extra spaces */
+  line-height: 1.6;            /* more comfortable reading */
+  letter-spacing: 0.2px;       /* subtle tracking */
+  word-break: break-word;      /* avoid overflow on long words/emojis */
+  max-width: 720px;            /* readable measure */
+  padding: 16px 18px;          /* inner spacing */
+  border-radius: 12px;         /* softer corners */
+  backdrop-filter: blur(6px);  /* frosted look if background supports */
+}
