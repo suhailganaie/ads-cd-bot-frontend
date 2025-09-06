@@ -1,10 +1,15 @@
+// src/AppRoutes.jsx
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
-// All routed pages must be default exports
+// Existing pages (kept)
 const Home = lazy(() => import('./pages/Home/Home'));
 const Earn = lazy(() => import('./pages/Earn/Earn'));
 const Tasks = lazy(() => import('./pages/Tasks/Tasks'));
+
+// NEW pages
+const Lottery = lazy(() => import('./pages/Lottery/Lottery'));
+const Invite = lazy(() => import('./pages/Invite/Invite'));
 
 const NotFound = () => (
   <div className="app">
@@ -20,6 +25,9 @@ export default function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="/earn" element={<Earn />} />
         <Route path="/tasks" element={<Tasks />} />
+        {/* NEW routes */}
+        <Route path="/lottery" element={<Lottery />} />
+        <Route path="/invite" element={<Invite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
