@@ -1,0 +1,12 @@
+/* styles/tasks.css (or inside App.css) */
+.task-list { display: grid; gap: 12px; margin-top: 10px; }
+.task { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.06); }
+.task.pending { border: 1px dashed rgba(255,255,255,0.25); }
+.task.done { opacity: 0.75; }
+.task-main { display: grid; gap: 6px; }
+.task-title { font-weight: 600; }
+.task-points { font-size: 0.9rem; opacity: 0.85; }
+.task-note { font-size: 0.85rem; opacity: 0.9; }
+.task-form { display: flex; gap: 8px; }
+.task-form input { flex: 1; padding: 8px 10px; border-radius: 8px; }
+.task-total { margin-top: 12px; font-weight: 700; }
