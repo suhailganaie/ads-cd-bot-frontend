@@ -5,6 +5,11 @@
   --card-border: rgba(255, 255, 255, 0.18);
   --text: #ffffff;
   --muted: rgba(255, 255, 255, 0.85);
+
+  /* Bottom nav tokens */
+  --nav-bg: rgba(35, 35, 60, 0.9);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-active: #635bff;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -45,3 +50,62 @@ body {
 .ad-button.side { background: linear-gradient(90deg, #ffd166, #fca5f1); }
 .muted { color: var(--muted); }
 @media (min-width: 480px) { .ad-buttons { grid-template-columns: 1fr 1fr; } }
+
+/* NEW: Ensure content doesn't sit under the fixed bottom bar */
+.app,
+main,
+.pages,
+#root {
+  /* reserve space ~ footer height */
+  padding-bottom: 84px;
+} /* Using padding-bottom is a common complement when fixing a footer to bottom to avoid overlap. [web:66][web:63][web:73] */
+
+/* NEW: Bottom Navigation (fixed, glassy) */
+.bottom-nav{
+  position: fixed; left: 0; right: 0; bottom: 0;
+  margin: 0 auto;
+  max-width: 720px;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 10px;
+  background: var(--nav-bg);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--nav-border);
+  z-index: 50;
+  /* rounded container look on large screens */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+} /* Fixed bottom bars use position: fixed; with reserved space or layout techniques to prevent content overlap. [web:73][web:66] */
+
+.bottom-nav .nav-btn{
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-decoration: none;
+  text-align: center;
+  color: #e7e7ff;
+  background: transparent;
+  font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+} /* Links styled as buttons for bottom tabs are standard in router-based nav bars. [web:64][web:51] */
+
+.bottom-nav .nav-btn.active{
+  background: var(--nav-active);
+  color: #fff;
+} /* Style the active tab; NavLink will attach an active state for easy CSS targeting. [web:64][web:51] */
+
+/* Optional: subtle press feedback for buttons */
+.bottom-nav .nav-btn:active { transform: translateY(1px); }
+
+/* Optional: larger tap targets on small screens */
+@media (max-width: 380px){
+  .bottom-nav { padding: 8px; }
+  .bottom-nav .nav-btn { font-size: 12px; padding: 9px 4px; }
+}
+
+/* Optional: glassmorphism accent for consistency */
+.bottom-nav,
+.card {
+  /* frosting look using backdrop blur and semi-transparent backgrounds is a common glassmorphism technique */
+  /* Already applied above; these comments document intent. */
+} /* Glassmorphism typically mixes semi-transparent layers and backdrop-filter blur. [web:70][web:61][web:60] */
