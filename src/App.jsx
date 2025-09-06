@@ -39,12 +39,7 @@ export default function App() {
           <p className="muted">Ad Rewards Platform</p>
 
           {/* Simple navigation to pages */}
-          <nav className="card" style={{ marginTop: 12, padding: 10, display: 'flex', gap: 12 }}>
-            <Link to="/" className="muted">Home</Link>
-            <Link to="/earn" className="muted">Earn</Link>
-            <Link to="/tasks" className="muted">Tasks</Link>
-            <Link to="/invite" className="muted">Invite</Link>
-          </nav>
+          
         </header>
 
         <section className="card balance-section">
