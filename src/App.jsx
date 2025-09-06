@@ -17,7 +17,7 @@ export default function App() {
       try {
         const p = show({
           type: 'inApp',
-          inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false }
+          inAppSettings: { frequency: 1, capping: 1, interval: 3600, timeout: 50, everyPage: false }
         });
         if (p?.catch) p.catch(() => {});
       } catch {}
