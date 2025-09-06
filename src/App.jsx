@@ -43,6 +43,7 @@ export default function App() {
             <Link to="/" className="muted">Home</Link>
             <Link to="/earn" className="muted">Earn</Link>
             <Link to="/tasks" className="muted">Tasks</Link>
+            <Link to="/invite" className="muted">Invite</Link>
           </nav>
         </header>
 
