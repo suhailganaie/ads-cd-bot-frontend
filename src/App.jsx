@@ -1,35 +1,28 @@
 // src/App.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter, Link } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
 export default function App() {
-  // Telegram WebApp: guard to avoid runtime errors outside Telegram
   useEffect(() => {
     const tg = window?.Telegram?.WebApp;
     if (tg && typeof tg.ready === 'function') tg.ready();
     if (tg && typeof tg.expand === 'function') tg.expand();
-  }, []); // Guards prevent TypeErrors that can cause blank screens in production [web:1214]
+  }, []); // Safe Telegram guards to avoid runtime errors/blank screens [1][13]
 
-  // Monetag SDK: guard the global to avoid crashes if not loaded
   useEffect(() => {
     const show = window?.show_9822309;
     if (typeof show === 'function') {
       try {
-        show({
+        const p = show({
           type: 'inApp',
-          inAppSettings: {
-            frequency: 2,
-            capping: 0.1,
-            interval: 30,
-            timeout: 5,
-            everyPage: false
-          }
+          inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false }
         });
+        if (p?.catch) p.catch(() => {});
       } catch {}
     }
-  }, []); // Defensive init per SDK behavior; prevents runtime errors when the global isn't ready [web:1101][web:1214]
+  }, []); // Defensive init to avoid white screen from uncaught errors [1][16]
 
   return (
     <BrowserRouter>
@@ -37,35 +30,20 @@ export default function App() {
         <header className="header">
           <h1>ADS BOT</h1>
           <p className="muted">Ad Rewards Platform</p>
-
-          {/* Simple navigation to pages */}
-                    
         </header>
 
-        <section className="card balance-section">
-          <h3>Welcome</h3>
-          <p className="muted">
-            Explore features from the menu. Auto interstitial ads may appear during usage.
-          </p>
-        </section>
-        
-        {/* Route outlet */}
-        <AppRoutes />
-        {/* Bottom navigation */}
-<nav className="bottom-nav">
-  <Link to="/" className="nav-item">
-    <span className="nav-label">Home</span>
-  </Link>
-  <Link to="/earn" className="nav-item">
-    <span className="nav-label">Earn</span>
-  </Link>
-  <Link to="/tasks" className="nav-item">
-    <span className="nav-label">Tasks</span>
-  </Link>
-  <Link to="/invite" className="nav-item">
-    <span className="nav-label">Invite</span>
-  </Link>
-</nav>
+        {/* Removed the Welcome card section here */}
+
+        <Suspense fallback={<div className="muted">Loading…</div>}>
+          <AppRoutes />
+        </Suspense>
+
+        <nav className="bottom-nav">
+          <Link to="/" className="nav-item"><span className="nav-label">Home</span></Link>
+          <Link to="/earn" className="nav-item"><span className="nav-label">Earn</span></Link>
+          <Link to="/tasks" className="nav-item"><span className="nav-label">Tasks</span></Link>
+          <Link to="/invite" className="nav-item"><span className="nav-label">Invite</span></Link>
+        </nav>
       </div>
     </BrowserRouter>
   );
