@@ -1,111 +1,123 @@
+/* Theme */
 :root {
-  --bg-start: #667eea;
-  --bg-end: #764ba2;
-  --card-bg: rgba(255, 255, 255, 0.12);
-  --card-border: rgba(255, 255, 255, 0.18);
-  --text: #ffffff;
-  --muted: rgba(255, 255, 255, 0.85);
-
-  /* Bottom nav tokens */
-  --nav-bg: rgba(35, 35, 60, 0.9);
-  --nav-border: rgba(255, 255, 255, 0.08);
-  --nav-active: #635bff;
+  --bg1: #3a47d5;
+  --bg2: #8e54e9;
+  --glass: rgba(255,255,255,0.08);
+  --glass-strong: rgba(255,255,255,0.12);
+  --text: #f4f6ff;
+  --text-muted: rgba(255,255,255,0.85);
+  --border: rgba(255,255,255,0.14);
 }
-* { box-sizing: border-box; }
+
+/* Global resets */
 html, body, #root { height: 100%; }
+
 body {
   margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
-  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+  background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-.app { max-width: 720px; margin: 0 auto; padding: 16px; }
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  backdrop-filter: blur(8px);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 8px 22px rgba(0,0,0,0.15);
-  margin: 16px 0;
-}
-.header { text-align: center; margin: 8px 0 16px; }
-.header h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
-.header p { margin: 4px 0 0; color: var(--muted); }
-.ad-buttons { display: grid; gap: 12px; }
-.ad-button {
-  width: 100%;
-  padding: 14px 16px;
-  color: #111827;
-  font-weight: 700;
-  border-radius: 12px;
-  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-  border: 0;
-  cursor: pointer;
-}
-.ad-button:disabled { opacity: .6; cursor: not-allowed; }
-.ad-button:active { transform: translateY(1px); }
-.ad-button.main { background: linear-gradient(90deg, #ff6a3d, #ff2d20); color: white; }
-.ad-button.side { background: linear-gradient(90deg, #ffd166, #fca5f1); }
-.muted { color: var(--muted); }
-@media (min-width: 480px) { .ad-buttons { grid-template-columns: 1fr 1fr; } }
 
-/* NEW: Ensure content doesn't sit under the fixed bottom bar */
-.app,
-main,
-.pages,
-#root {
-  /* reserve space ~ footer height */
-  padding-bottom: 84px;
-} /* Using padding-bottom is a common complement when fixing a footer to bottom to avoid overlap. [web:66][web:63][web:73] */
-
-/* NEW: Bottom Navigation (fixed, glassy) */
-.bottom-nav{
-  position: fixed; left: 0; right: 0; bottom: 0;
-  margin: 0 auto;
+/* App container */
+.app {
   max-width: 720px;
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  padding: 10px;
-  background: var(--nav-bg);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--nav-border);
-  z-index: 50;
-  /* rounded container look on large screens */
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-} /* Fixed bottom bars use position: fixed; with reserved space or layout techniques to prevent content overlap. [web:73][web:66] */
-
-.bottom-nav .nav-btn{
-  appearance: none;
-  border: 0;
-  border-radius: 10px;
-  padding: 10px 6px;
-  text-decoration: none;
-  text-align: center;
-  color: #e7e7ff;
-  background: transparent;
-  font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-} /* Links styled as buttons for bottom tabs are standard in router-based nav bars. [web:64][web:51] */
-
-.bottom-nav .nav-btn.active{
-  background: var(--nav-active);
-  color: #fff;
-} /* Style the active tab; NavLink will attach an active state for easy CSS targeting. [web:64][web:51] */
-
-/* Optional: subtle press feedback for buttons */
-.bottom-nav .nav-btn:active { transform: translateY(1px); }
-
-/* Optional: larger tap targets on small screens */
-@media (max-width: 380px){
-  .bottom-nav { padding: 8px; }
-  .bottom-nav .nav-btn { font-size: 12px; padding: 9px 4px; }
+  margin: 0 auto;
+  padding: 16px 14px 90px; /* bottom padding for fixed nav */
+  box-sizing: border-box;
 }
 
-/* Optional: glassmorphism accent for consistency */
-.bottom-nav,
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.header h1 {
+  margin: 8px 0 2px;
+  letter-spacing: 1px;
+}
+
+.muted { color: var(--text-muted); }
+
+/* Cards */
 .card {
-  /* frosting look using backdrop blur and semi-transparent backgrounds is a common glassmorphism technique */
-  /* Already applied above; these comments document intent. */
-} /* Glassmorphism typically mixes semi-transparent layers and backdrop-filter blur. [web:70][web:61][web:60] */
+  background: var(--glass);
+  border: 1px solid var(--glass-strong);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.16);
+  backdrop-filter: blur(8px);
+}
+
+.balance-section { margin-top: 12px; }
+
+/* Buttons (utility) */
+button {
+  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, background 200ms ease, border-color 200ms ease, opacity 150ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  border-color: rgba(255,255,255,0.22);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bottom navigation bar */
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 64px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+  background: rgba(10,10,25,0.55);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.10);
+  transition: transform 120ms ease, background 200ms ease, border-color 200ms ease;
+}
+
+.nav-item:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+  border-color: rgba(255,255,255,0.18);
+}
+
+/* Active route state (use NavLink in App.jsx to apply .active) */
+.nav-item.active {
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+  border-color: rgba(255,255,255,0.26);
+}
