@@ -2,12 +2,9 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
-// Existing pages (kept)
 const Home = lazy(() => import('./pages/Home/Home'));
 const Earn = lazy(() => import('./pages/Earn/Earn'));
 const Tasks = lazy(() => import('./pages/Tasks/Tasks'));
-
-// NEW pages
 const Lottery = lazy(() => import('./pages/Lottery/Lottery'));
 const Invite = lazy(() => import('./pages/Invite/Invite'));
 
