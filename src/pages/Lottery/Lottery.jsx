@@ -1,25 +1,24 @@
+// src/pages/Lottery/Lottery.jsx
+import { useState } from 'react';
+
 export default function Lottery() {
+  // Mock ticket state; replace with real value from API/store later
+  const [tickets, setTickets] = useState(0);
+  const [status, setStatus] = useState('');
+
+  const addTicket = (n = 1) => setTickets(t => Math.min(9999, t + n));
+  const enterDraw = () => {
+    if (tickets < 1) {
+      setStatus('Not enough tickets to enter.');
+      return;
+    }
+    setTickets(t => t - 1);
+    setStatus('Entered the daily draw! Good luck!');
+    setTimeout(() => setStatus(''), 1500);
+  };
+
   return (
     <div className="card">
       <h2>Lottery</h2>
-      <p className="muted">Join daily draws with tickets. Spins coming soon.</p>
-    </div>
-  );
-}
-
-// src/pages/Invite/Invite.jsx
-export default function Invite() {
-  const link = 'https://example.com/r/ABC123';
-  return (
-    <div className="card">
-      <h2>Invite Friends</h2>
-      <p className="muted">Share a referral link and earn bonuses.</p>
-      <div className="invite-box">
-        <input readOnly value={link} />
-        <button onClick={async () => {
-          try { await navigator.clipboard.writeText(link); } catch {}
-        }}>Copy Link</button>
-      </div>
-    </div>
-  );
-}
+      <p className="muted">Use tickets to join the daily draw. Spins and instant wins are coming soon
+        
