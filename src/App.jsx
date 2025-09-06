@@ -1,17 +1,18 @@
+// src/App.jsx
 import React, { useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Link } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
 export default function App() {
-  // Telegram WebApp guard
+  // Telegram WebApp: guard to avoid runtime errors outside Telegram
   useEffect(() => {
     const tg = window?.Telegram?.WebApp;
     if (tg && typeof tg.ready === 'function') tg.ready();
     if (tg && typeof tg.expand === 'function') tg.expand();
-  }, []); // avoid TypeErrors when opened outside Telegram [web:1214]
+  }, []); // Guards prevent TypeErrors that can cause blank screens in production [web:1214]
 
-  // Global in‑app interstitial init (guarded)
+  // Monetag SDK: guard the global to avoid crashes if not loaded
   useEffect(() => {
     const show = window?.show_9822309;
     if (typeof show === 'function') {
@@ -28,7 +29,7 @@ export default function App() {
         });
       } catch {}
     }
-  }, []); // prevent blank screen if SDK not ready [web:1101][web:1214]
+  }, []); // Defensive init per SDK behavior; prevents runtime errors when the global isn't ready [web:1101][web:1214]
 
   return (
     <BrowserRouter>
@@ -36,6 +37,13 @@ export default function App() {
         <header className="header">
           <h1>ADS BOT</h1>
           <p className="muted">Ad Rewards Platform</p>
+
+          {/* Simple navigation to pages */}
+          <nav className="card" style={{ marginTop: 12, padding: 10, display: 'flex', gap: 12 }}>
+            <Link to="/" className="muted">Home</Link>
+            <Link to="/earn" className="muted">Earn</Link>
+            <Link to="/tasks" className="muted">Tasks</Link>
+          </nav>
         </header>
 
         <section className="card balance-section">
@@ -45,6 +53,7 @@ export default function App() {
           </p>
         </section>
 
+        {/* Route outlet */}
         <AppRoutes />
       </div>
     </BrowserRouter>
