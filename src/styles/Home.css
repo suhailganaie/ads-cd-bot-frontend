@@ -1,0 +1,45 @@
+/* Full-page layout for the Home screen */
+html, body, #root {
+  height: 100%;
+}
+
+.home-page {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  padding-top: 28px; /* space under the app bar */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;  /* left align text */
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* Titles */
+.home-title {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.home-subtitle {
+  margin: 0 0 12px;
+  opacity: 0.8;
+}
+
+/* Full-width welcome text block */
+.home-welcome {
+  display: grid;
+  gap: 8px;
+  line-height: 1.5;
+  font-size: 14.5px;
+  /* Limit on very wide screens for readability while staying full-width on phones */
+  max-width: 720px;
+}
+
+/* Disable any global .card styling that might wrap Home */
+.home-page .card {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+}
