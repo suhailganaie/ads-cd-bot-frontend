@@ -1,22 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function Home() {
+  useEffect(() => {
+    const tg = window?.Telegram?.WebApp;
+    try { tg?.expand?.(); tg?.ready?.(); } catch {}
+  }, []); // Use full Mini App height for a true full-page section. [web:3300][web:3590]
+
   return (
-    <div className="card">
-      <p className="muted">
-<section className="card balance-section rich-text">
-  {`👋 Welcome to ADS BOT
-Turn time into tokens — watch ads and invite friends.
+    <main className="home-page">
+      <h1 className="home-title">ADS BOT</h1>
+      <p className="home-subtitle">Ad Rewards Platform</p>
 
-🎬 Watch ads to earn points instantly.
-👥 Invite friends to earn even more.
-💱 Convert points into the official token.
+      <div className="home-welcome">
+        <p>👋 Welcome to ADS BOT</p>
+        <p>Turn time into tokens — watch ads and invite friends.</p>
 
-Start earning in minutes — no crypto knowledge needed.
-👉 Let’s get started!`}
-</section>
+        <p>🎬 Watch ads to earn points instantly.</p>
+        <p>👥 Invite friends to earn even more.</p>
+        <p>💱 Convert points into the official token.</p>
 
-      </p>
-    </div>
+        <p>Start earning in minutes — no crypto knowledge needed.</p>
+        <p>👉 Let’s get started!</p>
+      </div>
+    </main>
   );
 }
