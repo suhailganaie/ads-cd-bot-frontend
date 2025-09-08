@@ -5,42 +5,62 @@ const API = import.meta.env.VITE_API_BASE;
 export default function Invite() {
   const tg = window?.Telegram?.WebApp;
   const unsafe = tg?.initDataUnsafe || {};
-  const initDataRaw = tg?.initData || ''; // optional: server validation [web:2788]
+  const initDataRaw = tg?.initData || '';
 
   // Telegram identity
-  const userId = unsafe?.user?.id ? String(unsafe.user.id) : ''; // current user id [web:2626]
-  const startParam = unsafe?.start_param || ''; // inviter id if opened via startapp [web:2833]
+  const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
+  const startParam = unsafe?.start_param || ''; // inviter id if opened via startapp
 
-  // Deep link for sharing (personal link includes own tid)
+  // Personal deep link
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // startapp becomes invitee's start_param on open [web:2833]
+  }, [userId]); // startapp becomes start_param for invitee on open [web:2833][web:2626]
 
-  // Optional: open a session so backend can validate signed init data
+  // Optional: open a session for server-side validation of init data
   useEffect(() => {
     if (!initDataRaw) return;
     fetch(`${API}/session/open`, {
       method: 'POST',
       headers: { Authorization: `tma ${initDataRaw}` }
-    }).catch(() => {}); // backend validates per Mini App init data spec [web:2788][web:2626]
-  }, [API, initDataRaw]);
+    }).catch(() => {});
+  }, [API, initDataRaw]); // run-once side effect per React useEffect guidance [web:2883][web:2772]
 
-  // Silent auto-claim: no UI, no messages
+  // Silent auto-claim (no UI)
+  const [claimedOnce, setClaimedOnce] = useState(false);
   useEffect(() => {
-    if (!startParam || !userId || startParam === userId) return; // ignore empty/self [web:2833]
+    if (!startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
-    if (localStorage.getItem(key)) return; // run once per pair [web:2838]
+    if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
+
     fetch(`${API}/invite/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-telegram-id': userId },
       body: JSON.stringify({ inviter_tid: startParam })
     }).catch(() => {}).finally(() => {
-      localStorage.setItem(key, '1'); // mark attempted so it stays silent [web:2836]
+      localStorage.setItem(key, '1');
+      setClaimedOnce(true);
     });
-  }, [API, startParam, userId]);
+  }, [API, startParam, userId]); // useEffect for fetch is the standard pattern in React [web:2883][web:2878]
+
+  // Invite counter
+  const [inviteCount, setInviteCount] = useState(null);
+  const fetchInviteCount = async () => {
+    try {
+      const headers = initDataRaw ? { Authorization: `tma ${initDataRaw}` } : {};
+      const res = await fetch(`${API}/invite/count`, { headers });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      if (typeof data?.count === 'number') setInviteCount(data.count);
+    } catch {}
+  };
+
+  // Load count on mount
+  useEffect(() => { fetchInviteCount(); }, []); // mount-only per useEffect docs [web:2942][web:2759]
+  // Refresh count after auto-claim attempt completes
+  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce]); // conditional effect [web:2942]
 
   // Share helpers
   const [copied, setCopied] = useState(false);
@@ -59,18 +79,22 @@ export default function Invite() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     }
-  }; // standard clipboard fallback pattern with useEffect state updates [web:2772][web:2752]
+  };
 
   const shareInTelegram = () => {
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
     if (tg?.openTelegramLink) tg.openTelegramLink(url);
     else window.open(url, '_blank', 'noopener,noreferrer');
-  }; // safe external open patterns for Mini Apps and web [web:2752]
+  };
 
   return (
     <section className="card">
       <h3>Invite friends</h3>
       <p className="muted">Share a personal link to invite friends and earn rewards.</p>
+
+      <div className="muted" style={{ marginBottom: 8 }}>
+        Invites: <strong>{inviteCount ?? 0}</strong>
+      </div>
 
       <div className="invite-box">
         <div className="invite-link" style={{ wordBreak: 'break-all' }}>
