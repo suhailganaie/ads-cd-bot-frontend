@@ -7,52 +7,58 @@ export default function Invite() {
   const unsafe = tg?.initDataUnsafe || {};
   const initDataRaw = tg?.initData || '';
 
-  // Telegram identity
+  // Telegram identity (string)
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
   const startParam = unsafe?.start_param || '';
 
-  // One auth scheme everywhere (prefer tma init data, fallback to x-telegram-id)
-  const authHeaders = useMemo(
-    () => (initDataRaw ? { Authorization: `tma ${initDataRaw}` } : { 'x-telegram-id': userId }),
-    [initDataRaw, userId]
-  ); // Send tma <initData> per Mini Apps auth docs; otherwise pass x-telegram-id. [web:3332][web:3318]
+  // Use x-telegram-id everywhere (matches working curl). Optionally add tma.
+  const authHeaders = useMemo(() => {
+    const h = {} as Record<string, string>;
+    if (userId) h['x-telegram-id'] = userId;
+    // If backend also accepts tma, uncomment the next line:
+    // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
+    return h;
+  }, [userId, initDataRaw]); // Align client with successful curl identity. [web:3346][web:3300]
 
-  // Deep link (userId in startapp)
+  // Personal deep link
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // startapp appears as start_param for invitees on open. [web:3338][web:3300]
+  }, [userId]); // startapp shows as start_param for invitee. [web:3300][web:3324]
 
-  // Optional: open a session so the server can validate init data (no UI dependency)
+  // Optional: open a session (kept no-op if server doesn’t need it)
   useEffect(() => {
     if (!API || !initDataRaw) return;
-    fetch(`${API}/session/open`, { method: 'POST', headers: { Authorization: `tma ${initDataRaw}` } }).catch(() => {});
-  }, [API, initDataRaw]); // Transmit raw init data in Authorization header. [web:3332][web:3318]
+    // Comment out if server doesn’t use session/open
+    fetch(`${API}/session/open`, {
+      method: 'POST',
+      headers: { Authorization: `tma ${initDataRaw}` }
+    }).catch(() => {});
+  }, [API, initDataRaw]); // Telegram init data background handshake. [web:3318]
 
-  // Auto-claim once per inviter/invitee pair
+  // Auto-claim once per inviter/invitee
   const [claimedOnce, setClaimedOnce] = useState(false);
   useEffect(() => {
     if (!API || !startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
     if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
+
     fetch(`${API}/invite/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({ inviter_tid: startParam })
-    })
-      .catch(() => {})
-      .finally(() => {
-        localStorage.setItem(key, '1');
-        setClaimedOnce(true);
-      });
-  }, [API, startParam, userId, authHeaders]); // Keep identity consistent for claim and count. [web:3332][web:3318]
+    }).catch(() => {}).finally(() => {
+      localStorage.setItem(key, '1');
+      setClaimedOnce(true);
+    });
+  }, [API, startParam, userId, authHeaders]); // Same header scheme as curl. [web:3346]
 
   // Invite count
-  const [inviteCount, setInviteCount] = useState(null);
+  const [inviteCount, setInviteCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const fetchInviteCount = useCallback(async () => {
     if (!API) { setErr('API not configured'); return; }
@@ -67,27 +73,26 @@ export default function Invite() {
         if (typeof data?.count === 'number') setInviteCount(data.count);
         else setErr('count parse error');
       }
-    } catch (e) {
-      setErr(String((e && e.message) || e));
+    } catch (e: any) {
+      setErr(String(e?.message || e));
     } finally {
       setLoading(false);
     }
-  }, [API, authHeaders]); // Standard React fetch with error state. [web:3346]
+  }, [API, authHeaders]); // Use the same header that returned count:4 via curl. [web:3346]
 
-  // Load on mount and after key changes
+  // Load and refresh
   useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // mount [web:3346]
-  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // after auto-claim [web:3346]
+  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // after claim [web:3346]
   useEffect(() => { if (userId) fetchInviteCount(); }, [userId, fetchInviteCount]); // identity change [web:3346]
-  useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // param change [web:3338]
+  useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // param change [web:3324]
 
-  // Refetch on focus; some Telegram clients cache the webview
+  // Refetch on focus to avoid cached webview
   useEffect(() => {
     const onVis = () => { if (!document.hidden) fetchInviteCount(); };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [fetchInviteCount]); // Page Visibility refresh. [web:3384]
+  }, [fetchInviteCount]); // Visibility refresh. [web:3346]
 
-  // Render safely even if env is missing
   return (
     <section className="card">
       <h3>Invite friends</h3>
@@ -100,9 +105,9 @@ export default function Invite() {
         </button>
       </div>
 
-      {(!API || err) && (
+      {err && (
         <div className="muted" style={{ color: '#f55', marginBottom: 8 }}>
-          {API ? `Error: ${err}` : 'API not configured'}
+          Error: {err}
         </div>
       )}
 
@@ -114,7 +119,7 @@ export default function Invite() {
           <button onClick={async () => {
             try { await navigator.clipboard.writeText(inviteLink); alert('Link copied'); }
             catch { alert('Copy failed'); }
-          }}>{'Copy link'}</button>
+          }}>Copy link</button>
           <button onClick={() => {
             const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
             if (tg?.openTelegramLink) tg.openTelegramLink(url);
