@@ -7,44 +7,42 @@ export default function Invite() {
   const unsafe = tg?.initDataUnsafe || {};
   const initDataRaw = tg?.initData || '';
 
-  // Telegram identity (string)
+  // Telegram identity
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
   const startParam = unsafe?.start_param || '';
 
-  // Use x-telegram-id everywhere (matches working curl). Optionally add tma.
+  // Use the same identity scheme as your working curl: x-telegram-id
   const authHeaders = useMemo(() => {
-    const h = {} as Record<string, string>;
+    const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend also accepts tma, uncomment the next line:
+    // Optional: if the backend also supports initData validation, uncomment:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Align client with successful curl identity. [web:3346][web:3300]
+  }, [userId, initDataRaw]); // Align client with successful curl requests. [web:3346]
 
-  // Personal deep link
+  // Deep link
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // startapp shows as start_param for invitee. [web:3300][web:3324]
+  }, [userId]); // startapp appears as start_param for invitees. [web:3300][web:3324]
 
-  // Optional: open a session (kept no-op if server doesn’t need it)
+  // Optional: server-side init data validation (safe no-op if not used)
   useEffect(() => {
     if (!API || !initDataRaw) return;
-    // Comment out if server doesn’t use session/open
     fetch(`${API}/session/open`, {
       method: 'POST',
       headers: { Authorization: `tma ${initDataRaw}` }
     }).catch(() => {});
-  }, [API, initDataRaw]); // Telegram init data background handshake. [web:3318]
+  }, [API, initDataRaw]); // Background handshake per Mini Apps docs. [web:3318]
 
-  // Auto-claim once per inviter/invitee
+  // Auto-claim once per inviter/invitee pair
   const [claimedOnce, setClaimedOnce] = useState(false);
   useEffect(() => {
     if (!API || !startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
     if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
-
     fetch(`${API}/invite/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -56,9 +54,9 @@ export default function Invite() {
   }, [API, startParam, userId, authHeaders]); // Same header scheme as curl. [web:3346]
 
   // Invite count
-  const [inviteCount, setInviteCount] = useState<number | null>(null);
+  const [inviteCount, setInviteCount] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState(null);
 
   const fetchInviteCount = useCallback(async () => {
     if (!API) { setErr('API not configured'); return; }
@@ -73,15 +71,15 @@ export default function Invite() {
         if (typeof data?.count === 'number') setInviteCount(data.count);
         else setErr('count parse error');
       }
-    } catch (e: any) {
-      setErr(String(e?.message || e));
+    } catch (e) {
+      setErr(String((e && e.message) || e));
     } finally {
       setLoading(false);
     }
-  }, [API, authHeaders]); // Use the same header that returned count:4 via curl. [web:3346]
+  }, [API, authHeaders]); // Robust fetch with error state. [web:3346]
 
   // Load and refresh
-  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // mount [web:3346]
+  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // on mount [web:3346]
   useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // after claim [web:3346]
   useEffect(() => { if (userId) fetchInviteCount(); }, [userId, fetchInviteCount]); // identity change [web:3346]
   useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // param change [web:3324]
@@ -91,7 +89,7 @@ export default function Invite() {
     const onVis = () => { if (!document.hidden) fetchInviteCount(); };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [fetchInviteCount]); // Visibility refresh. [web:3346]
+  }, [fetchInviteCount]); // Visibility refresh pattern. [web:3346]
 
   return (
     <section className="card">
