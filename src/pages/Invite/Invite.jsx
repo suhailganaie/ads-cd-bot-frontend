@@ -9,29 +9,32 @@ export default function Invite() {
 
   // Telegram identity
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
-  const startParam = unsafe?.start_param || ''; // inviter id if opened via startapp
+  const startParam = unsafe?.start_param || '';
 
-  // Consistent auth headers for all calls (tma preferred, fallback to x-telegram-id)
+  // Single source of truth for auth headers (prefer tma init data)
   const authHeaders = useMemo(
     () => (initDataRaw ? { Authorization: `tma ${initDataRaw}` } : { 'x-telegram-id': userId }),
     [initDataRaw, userId]
-  ); // Using tma with init data is the recommended Mini Apps auth method. [web:3318][web:3332]
+  ); // Mini Apps recommend passing raw init data in Authorization: tma <initData>. [web:3332][web:3318]
 
-  // Personal deep link
+  // Deep link
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // startapp value appears in initData.start_param on open. [web:3338][web:3300]
+  }, [userId]); // startapp maps to start_param on next open. [web:3338][web:3300]
 
-  // Optional: open a session for server-side validation of init data
+  // Optional: open server session for init data validation
   useEffect(() => {
     if (!initDataRaw) return;
-    fetch(`${API}/session/open`, { method: 'POST', headers: { Authorization: `tma ${initDataRaw}` } }).catch(() => {});
-  }, [API, initDataRaw]); // Transmit init data per docs. [web:3318][web:3332]
+    fetch(`${API}/session/open`, {
+      method: 'POST',
+      headers: { Authorization: `tma ${initDataRaw}` }
+    }).catch(() => {});
+  }, [API, initDataRaw]); // Transmit init data as documented. [web:3332][web:3318]
 
-  // Silent auto-claim (no UI)
+  // Auto-claim once per inviter/invitee pair
   const [claimedOnce, setClaimedOnce] = useState(false);
   useEffect(() => {
     if (!startParam || !userId || startParam === userId) return;
@@ -46,30 +49,45 @@ export default function Invite() {
       localStorage.setItem(key, '1');
       setClaimedOnce(true);
     });
-  }, [API, startParam, userId, authHeaders]); // Match auth scheme across endpoints. [web:3318]
+  }, [API, startParam, userId, authHeaders]); // Same auth scheme for claim and count. [web:3332][web:3318]
 
-  // Invite counter
-  const [inviteCount, setInviteCount] = useState(null);
+  // Count loader
+  const [inviteCount, setInviteCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const fetchInviteCount = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await fetch(`${API}/invite/count`, { headers: authHeaders });
-      if (!res.ok) return;
+      if (!res.ok) { setLoading(false); return; }
       const data = await res.json().catch(() => ({}));
       if (typeof data?.count === 'number') setInviteCount(data.count);
-    } catch {}
-  }, [API, authHeaders]); // Consistent headers avoid identity mismatch. [web:3318][web:3332]
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [API, authHeaders]); // Consistent headers prevent identity mismatches. [web:3332][web:3318]
 
-  // Load and refresh rules
-  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // on mount [web:3336]
-  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // after auto-claim [web:3336]
-  useEffect(() => { if (startParam || userId) fetchInviteCount(); }, [startParam, userId, fetchInviteCount]); // param/user changes [web:3350]
+  // Load on mount
+  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // React fetch pattern. [web:3336]
 
-  // Refresh on focus (Telegram webview may cache; reopen/focus needs refetch)
+  // Refresh after auto-claim completes
+  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // Conditional refetch. [web:3336]
+
+  // Refresh when identity/params change
+  useEffect(() => { if (userId) fetchInviteCount(); }, [userId, fetchInviteCount]); // User changes. [web:3336]
+  useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // Param changes. [web:3350]
+
+  // Refresh when the webview regains focus (some clients cache pages)
   useEffect(() => {
     const onVis = () => { if (!document.hidden) fetchInviteCount(); };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [fetchInviteCount]); // Workaround for partial reloads in some clients. [web:3321][web:3300]
+  }, [fetchInviteCount]); // Page Visibility API in React. [web:3383][web:3385]
+
+  // Manual refresh button (useful during testing)
+  const onRefresh = () => fetchInviteCount();
 
   // Share helpers
   const [copied, setCopied] = useState(false);
@@ -101,8 +119,11 @@ export default function Invite() {
       <h3>Invite friends</h3>
       <p className="muted">Share a personal link to invite friends and earn rewards.</p>
 
-      <div className="muted" style={{ marginBottom: 8 }}>
+      <div className="muted" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         Invites: <strong>{inviteCount ?? 0}</strong>
+        <button onClick={onRefresh} disabled={loading} style={{ padding: '2px 8px' }}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       <div className="invite-box">
