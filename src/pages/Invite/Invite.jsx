@@ -1,23 +1,33 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env?.VITE_API_BASE || '';
 
 export default function Invite() {
+  // Guard against missing API to avoid white screen
+  if (!API) {
+    return (
+      <section className="card">
+        <h3>Invite friends</h3>
+        <p className="muted">API not configured. Set VITE_API_BASE at build time.</p>
+      </section>
+    );
+  } // Vite envs must be defined at build and start with VITE_. [web:3412][web:3398]
+
   const tg = window?.Telegram?.WebApp;
   const unsafe = tg?.initDataUnsafe || {};
   const initDataRaw = tg?.initData || '';
 
   // Telegram identity
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
-  const startParam = unsafe?.start_param || '';
+  const startParam = unsafe?.start_param || ''; // inviter id if opened via startapp
 
-  // Single source of truth for auth headers (prefer tma init data)
+  // Single source auth headers (prefer tma init data, fallback to x-telegram-id)
   const authHeaders = useMemo(
     () => (initDataRaw ? { Authorization: `tma ${initDataRaw}` } : { 'x-telegram-id': userId }),
     [initDataRaw, userId]
-  ); // Mini Apps recommend passing raw init data in Authorization: tma <initData>. [web:3332][web:3318]
+  ); // Transmit raw init data in Authorization header per Mini Apps docs. [web:3332][web:3318]
 
-  // Deep link
+  // Personal deep link
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
@@ -25,95 +35,83 @@ export default function Invite() {
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
   }, [userId]); // startapp maps to start_param on next open. [web:3338][web:3300]
 
-  // Optional: open server session for init data validation
+  // Optional: open session for server-side validation of init data
   useEffect(() => {
     if (!initDataRaw) return;
     fetch(`${API}/session/open`, {
       method: 'POST',
       headers: { Authorization: `tma ${initDataRaw}` }
     }).catch(() => {});
-  }, [API, initDataRaw]); // Transmit init data as documented. [web:3332][web:3318]
+  }, [API, initDataRaw]); // Recommended way to pass init data to server. [web:3332][web:3318]
 
-  // Auto-claim once per inviter/invitee pair
+  // Silent auto-claim once per inviter/invitee pair
   const [claimedOnce, setClaimedOnce] = useState(false);
   useEffect(() => {
-    if (!startParam || !userId || startParam === userId) return;
-    const key = `invite:auto:${userId}:${startParam}`;
-    if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
-
-    fetch(`${API}/invite/claim`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify({ inviter_tid: startParam })
-    }).catch(() => {}).finally(() => {
-      localStorage.setItem(key, '1');
+    try {
+      if (!startParam || !userId || startParam === userId) return;
+      const key = `invite:auto:${userId}:${startParam}`;
+      if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
+      fetch(`${API}/invite/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ inviter_tid: startParam })
+      })
+        .catch((e) => console.warn('claim error', e))
+        .finally(() => {
+          localStorage.setItem(key, '1');
+          setClaimedOnce(true);
+        });
+    } catch (e) {
+      console.warn('auto-claim failed', e);
       setClaimedOnce(true);
-    });
-  }, [API, startParam, userId, authHeaders]); // Same auth scheme for claim and count. [web:3332][web:3318]
+    }
+  }, [API, startParam, userId, authHeaders]); // Keep identity consistent across endpoints. [web:3332][web:3318]
 
-  // Count loader
+  // Invite count
   const [inviteCount, setInviteCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const fetchInviteCount = useCallback(async () => {
+    setErr(null);
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await fetch(`${API}/invite/count`, { headers: authHeaders });
-      if (!res.ok) { setLoading(false); return; }
+      if (!res.ok) {
+        setErr(`count http ${res.status}`);
+        return;
+      }
       const data = await res.json().catch(() => ({}));
-      if (typeof data?.count === 'number') setInviteCount(data.count);
-    } catch {
-      // ignore
+      if (typeof data?.count === 'number') {
+        setInviteCount(data.count);
+      } else {
+        setErr('count parse error');
+      }
+    } catch (e: any) {
+      setErr(String(e?.message || e));
     } finally {
       setLoading(false);
     }
-  }, [API, authHeaders]); // Consistent headers prevent identity mismatches. [web:3332][web:3318]
+  }, [API, authHeaders]); // Standard fetch pattern with error state. [web:3336][web:3374]
 
-  // Load on mount
-  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // React fetch pattern. [web:3336]
+  // Fetch on mount
+  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // Mount/refetch pattern. [web:3336]
 
-  // Refresh after auto-claim completes
-  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // Conditional refetch. [web:3336]
+  // Refetch after auto-claim completes, and on identity/param change
+  useEffect(() => { if (claimedOnce) fetchInviteCount(); }, [claimedOnce, fetchInviteCount]); // [web:3336]
+  useEffect(() => { if (userId) fetchInviteCount(); }, [userId, fetchInviteCount]); // [web:3336]
+  useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // [web:3338]
 
-  // Refresh when identity/params change
-  useEffect(() => { if (userId) fetchInviteCount(); }, [userId, fetchInviteCount]); // User changes. [web:3336]
-  useEffect(() => { if (startParam) fetchInviteCount(); }, [startParam, fetchInviteCount]); // Param changes. [web:3350]
-
-  // Refresh when the webview regains focus (some clients cache pages)
+  // Refetch on focus; some clients cache the webview
   useEffect(() => {
     const onVis = () => { if (!document.hidden) fetchInviteCount(); };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [fetchInviteCount]); // Page Visibility API in React. [web:3383][web:3385]
+  }, [fetchInviteCount]); // Page Visibility API for reliable refresh. [web:3383][web:3321]
 
-  // Manual refresh button (useful during testing)
   const onRefresh = () => fetchInviteCount();
 
-  // Share helpers
-  const [copied, setCopied] = useState(false);
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = inviteLink;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    }
-  };
-
-  const shareInTelegram = () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
-    if (tg?.openTelegramLink) tg.openTelegramLink(url);
-    else window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
+  // Render
   return (
     <section className="card">
       <h3>Invite friends</h3>
@@ -126,13 +124,31 @@ export default function Invite() {
         </button>
       </div>
 
+      {err && (
+        <div className="muted" style={{ color: '#f55', marginBottom: 8 }}>
+          Error: {err}
+        </div>
+      )}
+
       <div className="invite-box">
         <div className="invite-link" style={{ wordBreak: 'break-all' }}>
           {inviteLink}
         </div>
         <div className="invite-actions" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button onClick={copyLink}>{copied ? 'Copied!' : 'Copy link'}</button>
-          <button onClick={shareInTelegram}>Share on Telegram</button>
+          <button onClick={onRefresh}>Sync</button>
+          <button onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(inviteLink);
+              alert('Link copied');
+            } catch {
+              alert('Copy failed');
+            }
+          }}>Copy link</button>
+          <button onClick={() => {
+            const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
+            if (tg?.openTelegramLink) tg.openTelegramLink(url);
+            else window.open(url, '_blank', 'noopener,noreferrer');
+          }}>Share on Telegram</button>
         </div>
 
         {!userId && (
