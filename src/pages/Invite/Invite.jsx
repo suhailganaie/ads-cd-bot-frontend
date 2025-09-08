@@ -5,62 +5,57 @@ const API = import.meta.env.VITE_API_BASE;
 export default function Invite() {
   const tg = window?.Telegram?.WebApp;
   const unsafe = tg?.initDataUnsafe || {};
-  const initDataRaw = tg?.initData || ''; // raw signed string for optional server validation
+  const initDataRaw = tg?.initData || ''; // signed init data (optional server validation)
 
-  // Telegram identity
+  // Current Telegram identity
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
   const username = unsafe?.user?.username || '';
 
-  // If opened from someone’s link, Telegram duplicates it here
-  const startParam = unsafe?.start_param || ''; // inviter's Telegram ID per design
+  // Inviter TID if opened via t.me/BOT/APP?startapp=<inviter_tid>
+  // Telegram duplicates the parameter into initDataUnsafe.start_param for the session. [web:2833]
+  const startParam = unsafe?.start_param || '';
 
-  // Your Mini App deep link
+  // Mini App deep link builder for sharing
   const BOT_USERNAME = 'ADS_Cd_bot';
-  const APP_NAME = 'ADS'; // t.me/ADS_Cd_bot/ADS
-
-  // Build personal invite link: startapp=<own_tid>
+  const APP_NAME = 'ADS';
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // Telegram startapp passes a value to start_param on next open [web:2833][web:2837].
+  }, [userId]); // startapp value becomes start_param for the invitee on open. [web:2833]
 
-  // Optional: Open a session so the server can validate initData signatures
+  // Optional: open a session for server-side validation of init data
   useEffect(() => {
     if (!initDataRaw) return;
     fetch(`${API}/session/open`, {
       method: 'POST',
       headers: { Authorization: `tma ${initDataRaw}` }
     }).catch(() => {});
-  }, [API, initDataRaw]); // Server can verify init data per Telegram guidance [web:2788].
+  }, [API, initDataRaw]); // Server can validate signed init data per Mini Apps docs. [web:2788][web:2626]
 
-  // If this user arrived via someone’s link, allow claiming the invite on first open
-  const [claimMsg, setClaimMsg] = useState('');
-  const [claiming, setClaiming] = useState(false);
+  // Auto-claim on first open if a valid inviter is present
+  const [claimedOnce, setClaimedOnce] = useState(false);
+  useEffect(() => {
+    if (!startParam || !userId || startParam === userId || claimedOnce) return; // avoid self/duplicates
+    const key = `invite:auto:${userId}:${startParam}`;
+    if (localStorage.getItem(key)) { setClaimedOnce(true); return; }
 
-  const claimInvite = async () => {
-    if (!startParam || !userId) return;
-    try {
-      setClaiming(true);
-      // Backend contract: header x-telegram-id is the invitee, body.inviter_tid is the inviter
-      const res = await fetch(`${API}/invite/claim`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-telegram-id': userId // invitee TID in header
-        },
-        body: JSON.stringify({ inviter_tid: startParam })
+    // Use the existing backend contract: header x-telegram-id = invitee, body.inviter_tid
+    fetch(`${API}/invite/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-telegram-id': userId
+      },
+      body: JSON.stringify({ inviter_tid: startParam })
+    })
+      .catch(() => {})
+      .finally(() => {
+        localStorage.setItem(key, '1'); // persist that we attempted once
+        setClaimedOnce(true);
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.message || `Error ${res.status}`);
-      setClaimMsg('Invite claimed successfully.');
-    } catch (e) {
-      setClaimMsg(e.message || 'Failed to claim invite.');
-    } finally {
-      setClaiming(false);
-    }
-  }; // Matches documented header/body usage for the claim endpoint [web:2752].
+  }, [API, startParam, userId]); // Auto-claim pattern; UI need not show a button. [web:2838][web:2836]
 
-  // UI helpers
+  // Share helpers
   const [copied, setCopied] = useState(false);
   const copyLink = async () => {
     try {
@@ -83,24 +78,19 @@ export default function Invite() {
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
     if (tg?.openTelegramLink) tg.openTelegramLink(url);
     else window.open(url, '_blank', 'noopener,noreferrer');
-  }; // Safe external open pattern for Mini Apps [web:2842][web:2573].
+  }; // Standard fetch/link patterns and header usage. [web:2752][web:2861]
 
   return (
     <section className="card">
       <h3>Invite friends</h3>
       <p className="muted">Share a personal link to invite friends and earn rewards.</p>
 
-      {startParam ? (
+      {/* Show info-only banner when an invite param is present; no button needed */}
+      {startParam && startParam !== userId && (
         <div className="note success" style={{ marginBottom: 8 }}>
-          Invite detected: {startParam}
-          <div style={{ marginTop: 8 }}>
-            <button onClick={claimInvite} disabled={claiming}>
-              {claiming ? 'Claiming…' : 'Claim invite'}
-            </button>
-            {claimMsg && <p className="muted" style={{ marginTop: 6 }}>{claimMsg}</p>}
-          </div>
+          Invite detected: {startParam}. Reward will be applied automatically.
         </div>
-      ) : null}
+      )}
 
       <div className="invite-box">
         <div className="invite-link" style={{ wordBreak: 'break-all' }}>
