@@ -1,20 +1,24 @@
+// src/hooks/useTelegram.js
 import { useEffect, useMemo, useState } from 'react';
 
 export default function useTelegram() {
-  const [webApp, setWebApp] = useState(null);
-  const [tgUser, setTgUser] = useState(null);
+  const [webApp, setWebApp] = useState(null); // Telegram WebApp instance [web:2626]  
+  const [tgUser, setTgUser] = useState(null); // Logged-in Telegram user (if inside Telegram) [web:2626]  
+  const [startParam, setStartParam] = useState(null); // Deep-link param if present [web:2769]  
 
   useEffect(() => {
     const tg = window?.Telegram?.WebApp;
-    if (!tg) return;
+    if (!tg) return; // Guard when running outside Telegram (local dev) [web:2716]  
     try {
-      if (typeof tg.ready === 'function') tg.ready();
-      if (typeof tg.expand === 'function') tg.expand();
+      if (typeof tg.ready === 'function') tg.ready(); // Recommended init for Mini Apps [web:2626]  
+      if (typeof tg.expand === 'function') tg.expand(); // Expand viewport for better UX [web:2632]  
     } catch {}
     setWebApp(tg);
-    const u = tg?.initDataUnsafe?.user || null;
-    if (u) setTgUser(u);
-  }, []); // Telegram init and expansion are typical for Mini Apps [web:2632][web:2716].
+    const unsafe = tg?.initDataUnsafe || null; // Client-side convenience; server must validate signatures [web:2626]  
+    const u = unsafe?.user || null;
+    if (u) setTgUser(u); // { id, username, first_name, ... } [web:2767]  
+    setStartParam(unsafe?.start_param || null); // Optional campaign/referral code [web:2769]  
+  }, []); // One-time initialization pattern for effects [web:2772]  
 
   const theme = useMemo(() => {
     const p = webApp?.themeParams || {};
@@ -27,13 +31,13 @@ export default function useTelegram() {
       buttonTextColor: p.button_text_color,
       secondaryBgColor: p.secondary_bg_color,
     };
-  }, [webApp]); // Reading Telegram theme params helps match app styling [web:2638].
+  }, [webApp]); // Derive theme values to style UI consistently with Telegram [web:2638]  
 
   const openLink = (url) => {
     try {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, '_blank', 'noopener,noreferrer'); // Prevent reverse-tabnabbing for external links [web:2538]  
     } catch {}
-  }; // Use noopener/noreferrer to prevent reverse-tabnabbing with target=_blank [web:2538][web:2532].
+  };
 
-  return { webApp, tgUser, theme, openLink };
+  return { webApp, tgUser, theme, startParam, openLink }; // Expose helpers and data to components [web:2716]  
 }
