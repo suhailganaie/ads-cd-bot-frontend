@@ -1,23 +1,24 @@
-// src/pages/Earn/Earn.jsx
 import React, { useEffect, useRef, useState } from 'react';
-import useTelegram from '../../hooks/useTelegram'; // Read Telegram user at runtime [web:2716]  
+import useTelegram from '../../hooks/useTelegram';
 
-const API = import.meta.env.VITE_API_BASE; // /api in dev via Vite proxy; full URL in prod [web:2628]  
+const API = import.meta.env.VITE_API_BASE;
 
 export default function Earn() {
-  const { tgUser } = useTelegram(); // { id, username } if inside Telegram [web:2626]  
+  const { tgUser } = useTelegram();
+
   const [cooldown, setCooldown] = useState(0);
   const timer = useRef();
 
   const [totalPoints, setTotalPoints] = useState(null);
   const [ptsLoading, setPtsLoading] = useState(true);
   const [ptsError, setPtsError] = useState(null);
+  const [token, setToken] = useState(null);
 
-  // Fetch current user's points on mount and whenever Telegram identity appears
+  // Fetch token + points via login
   useEffect(() => {
     let alive = true;
-    const telegram_id = tgUser?.id ? String(tgUser.id) : import.meta.env.VITE_DEV_TID || 'guest'; // Dev fallback [web:2628]  
-    const username = tgUser?.username || import.meta.env.VITE_DEV_USERNAME || 'guest'; // Dev fallback [web:2628]  
+    const telegram_id = tgUser?.id ? String(tgUser.id) : import.meta.env.VITE_DEV_TID || 'guest';
+    const username = tgUser?.username || import.meta.env.VITE_DEV_USERNAME || 'guest';
 
     (async () => {
       try {
@@ -25,21 +26,22 @@ export default function Earn() {
         const res = await fetch(`${API}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telegram_id, username }), // Backend contract: POST JSON [web:2582]  
+          body: JSON.stringify({ telegram_id, username })
         });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); // HTTP guard [web:2752]  
-        const data = await res.json(); // Parse application/json [web:2752]  
-        const pts = data?.user?.points ?? 0; // Read user.points from response [web:2603]  
-        if (alive) setTotalPoints(pts);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const data = await res.json();
+        if (!alive) return;
+        setTotalPoints(data?.user?.points ?? 0);
+        setToken(data?.token || null);
       } catch (e) {
-        if (alive) setPtsError('Failed to load points'); // Display minimal error [web:2752]  
+        if (alive) setPtsError('Failed to load points');
       } finally {
         if (alive) setPtsLoading(false);
       }
     })();
 
-    return () => { alive = false; }; // Abort pattern for effects [web:2776]  
-  }, [API, tgUser?.id, tgUser?.username]); // Refresh when Telegram identity becomes available [web:2716]  
+    return () => { alive = false; };
+  }, [API, tgUser?.id, tgUser?.username]);
 
   const canShow = cooldown === 0;
 
@@ -57,23 +59,43 @@ export default function Earn() {
     }, 1000);
   };
 
-  // Ad actions (stubbed)
-  const popup = async () => {
-    if (!canShow || typeof window.show_9822309 !== 'function') return; // Guard external SDK [web:2772]  
-    try {
-      await window.show_9822309('pop'); // Popup ad [web:2772]  
-      alert('Popup completed — +2 points (stubbed)'); // Replace with backend credit call if implemented [web:2752]  
-      startCooldown();
-    } catch {}
+  // Helper to POST with Bearer
+  const postWithAuth = async (path) => {
+    if (!token) throw new Error('No token');
+    const res = await fetch(`${API}${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res;
   };
 
-  const interstitial = async () => {
-    if (!canShow || typeof window.show_9822309 !== 'function') return; // Guard external SDK [web:2772]  
+  // EARN (2) => /ads/main (+2)
+  const popup = async () => {
+    if (!canShow || typeof window.show_9822309 !== 'function') return;
     try {
-      await window.show_9822309(); // Interstitial ad [web:2772]  
-      alert('Interstitial watched — +1 point (stubbed)'); // Replace with backend credit call if implemented [web:2752]  
+      await window.show_9822309('pop');
+      // optimistic +2
+      setTotalPoints(p => (p ?? 0) + 2);
+      await postWithAuth('/ads/main');
       startCooldown();
-    } catch {}
+    } catch {
+      // rollback if server rejects
+      setTotalPoints(p => (p ?? 0) - 2);
+    }
+  };
+
+  // EARN (1) => /ads/side (+1)
+  const interstitial = async () => {
+    if (!canShow || typeof window.show_9822309 !== 'function') return;
+    try {
+      await window.show_9822309();
+      setTotalPoints(p => (p ?? 0) + 1);
+      await postWithAuth('/ads/side');
+      startCooldown();
+    } catch {
+      setTotalPoints(p => (p ?? 0) - 1);
+    }
   };
 
   return (
@@ -86,10 +108,10 @@ export default function Earn() {
       </div>
 
       <div className="ad-buttons">
-        <button className="ad-button main" onClick={popup} disabled={!canShow}>
+        <button className="ad-button main" onClick={popup} disabled={!canShow || !token}>
           EARN (2) {cooldown ? `• ${cooldown}s` : ''}
         </button>
-        <button className="ad-button side" onClick={interstitial} disabled={!canShow}>
+        <button className="ad-button side" onClick={interstitial} disabled={!canShow || !token}>
           EARN (1) {cooldown ? `• ${cooldown}s` : ''}
         </button>
       </div>
