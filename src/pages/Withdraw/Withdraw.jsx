@@ -6,30 +6,45 @@ const API = import.meta.env?.VITE_API_BASE || '';
 export default function Withdraw() {
   const tg = window?.Telegram?.WebApp;
   const unsafe = tg?.initDataUnsafe || {};
-  const initDataRaw = tg?.initData || '';
-  const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
+  const user = unsafe?.user || {};
+  const userId = user?.id ? String(user.id) : '';
+  const username = user?.username || '';
 
-  // Auth headers: x-telegram-id (same as other screens)
+  // Obtain JWT once (backend issues token via /api/auth/login)
+  const [token, setToken] = useState('');
+  useEffect(() => {
+    if (!API || !userId) return;
+    fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_id: userId, username }),
+    })
+      .then((r) => r.json())
+      .then((d) => d?.token && setToken(d.token))
+      .catch(() => {});
+  }, [API, userId, username]); // Retrieves JWT used below. [6][7]
+
+  // Build auth headers: prefer Bearer, else x-telegram-id fallback
   const authHeaders = useMemo(() => {
     const h = {};
-    if (userId) h['x-telegram-id'] = userId;
-    // If switching to verified initData in backend, uncomment:
-    // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
+    if (token) h.Authorization = `Bearer ${token}`;
+    else if (userId) h['x-telegram-id'] = userId;
     return h;
-  }, [userId, initDataRaw]);
+  }, [token, userId]); // Sends proper Authorization header for protected route. [2][6]
 
   useEffect(() => { try { tg?.expand?.(); tg?.ready?.(); } catch {} }, []);
 
-  // Rules (ratio/min)
+  // Rules (ratio/min) for UX
   const [rules, setRules] = useState({ ratio: 100, min_tokens: 10 });
   useEffect(() => {
     if (!API) return;
     fetch(`${API}/withdrawals/rules`)
-      .then(r => r.json()).then((d) => d && setRules(d))
+      .then((r) => r.json())
+      .then((d) => d && setRules(d))
       .catch(() => {});
-  }, [API]);
+  }, [API]); // Fetches min_tokens and ratio used in validation. [7]
 
-  // Balance in points
+  // Balance (points)
   const [balance, setBalance] = useState(null);
   const [loadingBal, setLoadingBal] = useState(false);
 
@@ -47,7 +62,7 @@ export default function Withdraw() {
   useEffect(() => { fetchBalance(); }, [fetchBalance]);
 
   // Form state (tokens, not points)
-  const [tokens, setTokens] = useState('');          // integer tokens
+  const [tokens, setTokens] = useState('');
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -55,11 +70,10 @@ export default function Withdraw() {
 
   const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a || '').trim());
 
-  // Derived helpers
   const maxTokens = useMemo(() => {
     const pts = Number(balance || 0);
     return Math.floor(pts / (rules?.ratio || 100));
-  }, [balance, rules]);
+  }, [balance, rules]); // Converts points → max token amount. [7]
 
   const disabled = useMemo(() => {
     const t = Number(tokens);
@@ -67,7 +81,7 @@ export default function Withdraw() {
     if (!isEvmAddress(address)) return true;
     if (balance !== null && t > maxTokens) return true;
     return false;
-  }, [API, tokens, address, balance, rules, maxTokens]);
+  }, [API, tokens, address, balance, rules, maxTokens]); // Mirror server-side validation. [14]
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -79,10 +93,7 @@ export default function Withdraw() {
       const res = await fetch(`${API}/withdrawals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          tokens: t,
-          address: String(address).trim() || undefined
-        }),
+        body: JSON.stringify({ tokens: t, address: String(address).trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
