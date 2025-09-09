@@ -1,6 +1,6 @@
 // src/pages/Home/Home.jsx
 import React, { useEffect } from 'react';
-import './Home.css';
+import '../../styles/Home.css';
 
 export default function Home() {
   useEffect(() => {
