@@ -178,3 +178,6 @@ body {
 .textarea { height: auto; min-height: 92px; padding-top: 10px; padding-bottom: 10px; }
 .form .btn-submit { margin-top: 4px; }
 .section-end-spacer { height: calc(16px + var(--safe-b)); }
+/* Keep final content visible above the fixed nav on all pages */
+.page-end-spacer { height: calc(28px + var(--safe-b)); }
+
