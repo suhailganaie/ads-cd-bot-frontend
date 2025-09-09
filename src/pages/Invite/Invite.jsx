@@ -22,7 +22,6 @@ export default function Invite() {
   }, [userId, initDataRaw]); // Uses shared shell; no local layout here. [web:4106]
 
   // Ready + expand as early as possible
-  useEffect(() => { try { tg?.ready?.(); tg?.expand?.(); } catch {} }, []); [web:4106]
 
   // Deep link for sharing (appears as start_param for invitees)
   const inviteLink = useMemo(() => {
