@@ -6,6 +6,7 @@ const Home = lazy(() => import('./pages/Home/Home'));
 const Earn = lazy(() => import('./pages/Earn/Earn'));
 const Tasks = lazy(() => import('./pages/Tasks/Tasks'));
 const Invite = lazy(() => import('./pages/Invite/Invite'));
+const Invite = lazy(() => import('./pages/Withdraw/Withdraw'));
 
 const NotFound = () => (
   <div className="app">
@@ -22,6 +23,7 @@ export default function AppRoutes() {
         <Route path="/earn" element={<Earn />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/invite" element={<Invite />} />
+        <Route path="/withdraw" element={<Withdraw />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
