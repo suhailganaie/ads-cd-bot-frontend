@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-
 import '../../styles/withdraw.css';
+
 const API = import.meta.env?.VITE_API_BASE || '';
 
 export default function Withdraw() {
@@ -9,20 +9,27 @@ export default function Withdraw() {
   const initDataRaw = tg?.initData || '';
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
 
-  // Use same auth scheme as Invite: x-telegram-id
+  // Auth headers: x-telegram-id (same as other screens)
   const authHeaders = useMemo(() => {
     const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend also accepts tma, enable:
+    // If switching to verified initData in backend, uncomment:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Keep identity consistent across endpoints. [web:3346][web:3332]
+  }, [userId, initDataRaw]);
 
+  useEffect(() => { try { tg?.expand?.(); tg?.ready?.(); } catch {} }, []);
+
+  // Rules (ratio/min)
+  const [rules, setRules] = useState({ ratio: 100, min_tokens: 10 });
   useEffect(() => {
-    try { tg?.expand?.(); tg?.ready?.(); } catch {}
-  }, []); // Fill Telegram viewport reliably. [web:3300]
+    if (!API) return;
+    fetch(`${API}/withdrawals/rules`)
+      .then(r => r.json()).then((d) => d && setRules(d))
+      .catch(() => {});
+  }, [API]);
 
-  // Balance
+  // Balance in points
   const [balance, setBalance] = useState(null);
   const [loadingBal, setLoadingBal] = useState(false);
 
@@ -35,28 +42,32 @@ export default function Withdraw() {
       if (res.ok && typeof data?.points === 'number') setBalance(data.points);
     } catch {}
     setLoadingBal(false);
-  }, [API, authHeaders]); // Same headers as other screens. [web:3346]
+  }, [API, authHeaders]);
 
-  useEffect(() => { fetchBalance(); }, [fetchBalance]); // on mount [web:3346]
+  useEffect(() => { fetchBalance(); }, [fetchBalance]);
 
-  // Form state
-  const [amount, setAmount] = useState('');
+  // Form state (tokens, not points)
+  const [tokens, setTokens] = useState('');          // integer tokens
   const [address, setAddress] = useState('');
-  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [ok, setOk] = useState(null);
 
-  // BEP20/ERC20 address check (0x + 40 hex)
   const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a || '').trim());
 
+  // Derived helpers
+  const maxTokens = useMemo(() => {
+    const pts = Number(balance || 0);
+    return Math.floor(pts / (rules?.ratio || 100));
+  }, [balance, rules]);
+
   const disabled = useMemo(() => {
-    const v = Number(amount);
-    if (!API || !v || !(v > 0)) return true;
-    if (!address || !isEvmAddress(address)) return true;
-    if (balance !== null && v > Number(balance)) return true;
+    const t = Number(tokens);
+    if (!API || !Number.isInteger(t) || t < (rules?.min_tokens || 10)) return true;
+    if (!isEvmAddress(address)) return true;
+    if (balance !== null && t > maxTokens) return true;
     return false;
-  }, [API, amount, address, balance]); // Client guard; server validates too. [web:3600]
+  }, [API, tokens, address, balance, rules, maxTokens]);
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -64,16 +75,13 @@ export default function Withdraw() {
     if (disabled) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/withdrawals/create`, {
+      const t = Number(tokens);
+      const res = await fetch(`${API}/withdrawals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
-          method: 'BEP20',
-          chain: 'bsc',
-          token_standard: 'erc20',
-          amount: Number(amount),
-          address: String(address).trim(),
-          memo: note || undefined
+          tokens: t,
+          address: String(address).trim() || undefined
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -81,11 +89,11 @@ export default function Withdraw() {
         setError(data?.error || `withdraw_failed_${res.status}`);
       } else {
         setOk('Withdrawal request submitted');
-        setAmount(''); setAddress(''); setNote('');
+        setTokens(''); setAddress('');
         fetchBalance();
       }
     } catch (err) {
-      setError(String((err && err.message) || err));
+      setError(String(err?.message || err));
     } finally {
       setSubmitting(false);
     }
@@ -97,31 +105,30 @@ export default function Withdraw() {
       <p className="muted">Send tokens to a BEP20 (ERC20-format) address.</p>
 
       <div className="wd-balance">
-        <span>Balance</span>
+        <span>Balance (points)</span>
         <strong>{loadingBal ? '…' : (balance ?? '—')}</strong>
       </div>
 
       <form className="wd-form" onSubmit={submit}>
         <label className="wd-label">
-          Amount
+          Amount (tokens)
           <input
             type="number"
-            inputMode="decimal"
-            min="0"
+            inputMode="numeric"
+            min={rules.min_tokens}
             step="1"
-            placeholder="Enter amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`Min ${rules.min_tokens}`}
+            value={tokens}
+            onChange={(e) => setTokens(e.target.value)}
           />
-          {balance !== null && (
-            <button
-              type="button"
-              className="wd-mini"
-              onClick={() => setAmount(String(balance))}
-            >
-              Max
-            </button>
-          )}
+          <button
+            type="button"
+            className="wd-mini"
+            onClick={() => setTokens(String(Math.max(rules.min_tokens, maxTokens)))}
+            disabled={maxTokens < rules.min_tokens}
+          >
+            Max ({maxTokens})
+          </button>
         </label>
 
         <label className="wd-label">
@@ -139,16 +146,6 @@ export default function Withdraw() {
           )}
         </label>
 
-        <label className="wd-label">
-          Memo / note (optional)
-          <input
-            type="text"
-            placeholder="Add a note if needed"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-
         {error && <div className="wd-error">Error: {error}</div>}
         {ok && <div className="wd-ok">{ok}</div>}
 
@@ -158,7 +155,7 @@ export default function Withdraw() {
       </form>
 
       <p className="wd-hint muted">
-        BEP20 addresses start with 0x; verify chain and address before submitting. Transfers are irreversible.
+        Tokens convert at {rules.ratio} points each; min {rules.min_tokens} tokens per request.
       </p>
     </main>
   );
