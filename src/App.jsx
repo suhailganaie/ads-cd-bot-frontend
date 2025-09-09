@@ -2,7 +2,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter, NavLink } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
-import './styles/App.css';
+import './styles/App.css'; // global once
 
 export default function App() {
   useEffect(() => {
