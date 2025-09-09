@@ -1,117 +1,87 @@
 /* src/styles/invite.css */
+/* Reuse App.css for page background, spacing, and safe-area.
+   This file only styles the Invite card and its inner elements. */
 
-/* 4K-ready tokens */
-:root {
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-outline: rgba(255, 255, 255, 0.22);
-  --glass-shadow: rgba(0, 0, 0, 0.25);
-  --accent: #7dd3fc;
-  --accent-2: #c084fc;
-  --text: #e6f0ff;
-  --muted: #b7c3d0;
-}
-
-/* Page wrapper reserves space for the fixed tab bar (uses safe-area) */
-.invite-page {
-  max-width: 820px;
-  margin: 0 auto;
-  padding: clamp(12px, 2vw, 20px) 14px calc(96px + var(--safe-b));
-  box-sizing: border-box;
-} /* Keeps content above bottom nav across devices. [8] */
-
-/* Scene background with parallax glow */
-.invite-scene {
-  min-height: var(--vh-stable); /* stable Telegram viewport height */
-  display: grid;
-  place-items: start center;
-  padding: 0;
-  background:
-    radial-gradient(1200px 800px at 15% 15%, rgba(124, 58, 237, 0.20), transparent 60%),
-    radial-gradient(1200px 800px at 85% 85%, rgba(14, 165, 233, 0.22), transparent 60%),
-    linear-gradient(135deg, #0b1020 0%, #0a0f1a 50%, #0b0f18 100%);
-  color: var(--text);
-} /* Uses --vh-stable bound by Telegram SDK to avoid shrinking. [7] */
-
-/* 3D glass card */
-.glass-card {
+.invite-card {
   position: relative;
-  width: min(900px, 100%);
-  margin-top: clamp(8px, 2vh, 18px);
+  width: 100%;
   padding: clamp(20px, 3vw, 40px);
   border-radius: 24px;
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border: 1px solid var(--glass-outline);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
-    0 20px 60px var(--glass-shadow),
+    0 12px 36px rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transform-style: preserve-3d;
-  perspective: 1200px;
-  animation: cardEnter 600ms ease 1;
+  animation: inviteEnter 600ms ease 1;
 }
 
-/* Accent glows */
-.glass-card::before,
-.glass-card::after {
+.invite-card::before,
+.invite-card::after {
   content: "";
   position: absolute;
   inset: -2px;
   border-radius: 24px;
-  background: linear-gradient(120deg, rgba(125, 211, 252, 0.12), rgba(192, 132, 252, 0.12));
+  background: linear-gradient(120deg, rgba(125,211,252,0.12), rgba(192,132,252,0.12));
   filter: blur(18px);
   z-index: -1;
 }
 
-/* Headings */
-.title { margin: 0 0 6px; font-size: clamp(22px, 3.2vw, 36px); font-weight: 700; letter-spacing: 0.2px; }
-.subtitle { margin: 0 0 22px; color: var(--muted); font-size: clamp(14px, 1.4vw, 18px); }
+/* Headings and text (inherit colors from App.css) */
+.inv-title { margin: 0 0 6px; font-size: clamp(20px, 3vw, 32px); font-weight: 700; }
+.inv-sub   { margin: 0 0 18px; opacity: .82; font-size: clamp(13px, 1.4vw, 16px); }
 
-/* Metric */
-.metric {
+/* Metric row */
+.inv-metric {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 14px 16px; border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 18px;
+  gap: 14px; padding: 12px 14px; border-radius: 14px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
+  margin-bottom: 16px;
 }
-.metric span { color: var(--muted); }
-.metric strong { font-size: clamp(22px, 3vw, 34px); color: #fff; }
+.inv-metric span { opacity: .82; }
+.inv-metric strong { font-size: clamp(20px, 2.6vw, 30px); }
 
-/* Link box + actions */
-.link-box {
-  padding: 14px; border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+/* Link box */
+.inv-linkbox {
+  padding: 12px; border-radius: 16px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
 }
-.link-text {
-  word-break: break-all; padding: 12px 14px; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.12);
+.inv-link {
+  word-break: break-all; padding: 10px 12px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.14);
   font-size: clamp(12px, 1.4vw, 16px);
 }
-.actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-.actions button {
+
+/* Actions */
+.inv-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.inv-actions button {
   appearance: none; border: 0; outline: 0; cursor: pointer;
   padding: 10px 14px; border-radius: 12px; color: #0b1020;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  font-weight: 700; transform: translateZ(0);
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+  background: linear-gradient(135deg, #7dd3fc, #c084fc);
+  font-weight: 700;
+  transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
   box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
 }
-.actions button:hover { transform: translateY(-1px); filter: brightness(1.03); }
-.actions button:active { transform: translateY(0); filter: brightness(0.96); }
-.hint { color: var(--muted); margin-top: 10px; }
+.inv-actions button:hover { transform: translateY(-1px); filter: brightness(1.03); }
+.inv-actions button:active { transform: translateY(0); filter: brightness(0.96); }
 
 /* Error */
-.error {
+.inv-error {
   color: #ff6b6b;
-  background: rgba(255, 107, 107, 0.08);
-  border: 1px solid rgba(255, 107, 107, 0.25);
+  background: rgba(255, 107, 107, 0.10);
+  border: 1px solid rgba(255, 107, 107, 0.28);
   border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
 }
 
-/* Spacer ensures last pixels stay above the fixed nav */
-.invite-end-spacer { height: calc(20px + var(--safe-b)); } /* Safe-area aware. [8] */
+/* Animation */
+@keyframes inviteEnter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.985); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
 
-/* Animations + media */
-@keyframes cardEnter { from { opacity: 0; transform: translate3d(0,10px,0) scale(0.98); } to { opacity:1; transform: translate3d(0,0,0) scale(1); } }
-@media (min-width: 1920px) { .glass-card { backdrop-filter: blur(20px) saturate(150%); } }
-@media (max-width: 420px) { .actions { flex-direction: column; } .actions button { width: 100%; } }
+/* Small screens */
+@media (max-width: 420px) {
+  .inv-actions { flex-direction: column; }
+  .inv-actions button { width: 100%; }
+}
