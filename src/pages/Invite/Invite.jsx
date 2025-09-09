@@ -1,4 +1,3 @@
-// src/pages/Invite/Invite.jsx
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import '../../styles/invite.css'; // card-only styles; layout and padding come from App.css
 
