@@ -1,3 +1,4 @@
+// src/pages/Invite/Invite.jsx
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import '../../styles/invite.css';
 
@@ -12,31 +13,31 @@ export default function Invite() {
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
 
-  // Identity headers (x-telegram-id; keep consistent with backend)
+  // Identity headers
   const authHeaders = useMemo(() => {
     const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend validates initData, uncomment:
+    // If backend verifies initData, you can also send:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Background-safe headers. [4]
+  }, [userId, initDataRaw]); // Consistent identity across requests. [7]
 
   useEffect(() => { try { tg?.expand?.(); tg?.ready?.(); } catch {} }, []);
 
-  // Generate deep link
+  // Deep link with startapp payload
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
   }, [userId]);
 
-  // Optional handshake for Mini Apps
+  // Optional Mini App handshake
   useEffect(() => {
     if (!API || !initDataRaw) return;
     fetch(`${API}/session/open`, { method: 'POST', headers: { Authorization: `tma ${initDataRaw}` } })
       .catch(() => {});
   }, [API, initDataRaw]);
 
-  // Auto-claim one-time on first open with inviter param
+  // Auto-claim referral (idempotent)
   useEffect(() => {
     if (!API || !startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
@@ -50,7 +51,7 @@ export default function Invite() {
     });
   }, [API, startParam, userId, authHeaders]);
 
-  // Invite count with background auto-refresh and visibility awareness
+  // Invite count with visibility-aware refresh
   const [inviteCount, setInviteCount] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -67,66 +68,65 @@ export default function Invite() {
     }
   }, [API, authHeaders]);
 
-  // Initial load
+  // Initial load + visible polling
   useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]);
-
-  // Visibility-aware polling: refresh every 20s while visible; pause when hidden
   useEffect(() => {
     let id;
-    const start = () => {
-      if (id) return;
-      id = setInterval(fetchInviteCount, 20000);
-    };
+    const tick = () => fetchInviteCount();
+    const start = () => { if (!id) id = setInterval(tick, 20000); };
     const stop = () => { if (id) { clearInterval(id); id = null; } };
-    const onVis = () => (document.hidden ? stop() : (fetchInviteCount(), start()));
-    onVis(); // run once now
+    const onVis = () => (document.hidden ? stop() : (tick(), start()));
+    onVis();
     document.addEventListener('visibilitychange', onVis);
     return () => { document.removeEventListener('visibilitychange', onVis); stop(); };
-  }, [fetchInviteCount]); // Efficient background updates. [3][4]
+  }, [fetchInviteCount]); // Poll when visible to user. [19]
 
   return (
-    <section className="invite-scene">
-      <div className="glass-card">
-        <h3 className="title">Invite friends</h3>
-        <p className="subtitle">Share a personal link to earn rewards.</p>
+    <div className="invite-page">
+      <section className="invite-scene">
+        <div className="glass-card">
+          <h3 className="title">Invite friends</h3>
+          <p className="subtitle">Share a personal link to earn rewards.</p>
 
-        <div className="metric">
-          <span>Invites</span>
-          <strong>{inviteCount ?? 0}</strong>
-        </div>
-
-        {err && <div className="error">Error: {err}</div>}
-
-        <div className="link-box">
-          <div className="link-text">{inviteLink}</div>
-          <div className="actions">
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(inviteLink);
-                  tg?.showPopup ? tg.showPopup({ message: 'Link copied' }) : alert('Link copied');
-                } catch {
-                  tg?.showPopup ? tg.showPopup({ message: 'Copy failed' }) : alert('Copy failed');
-                }
-              }}
-            >
-              Copy link
-            </button>
-
-            <button
-              onClick={() => {
-                const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
-                if (tg?.openTelegramLink) tg.openTelegramLink(url);
-                else window.open(url, '_blank', 'noopener,noreferrer');
-              }}
-            >
-              Share on Telegram
-            </button>
+          <div className="metric">
+            <span>Invites</span>
+            <strong>{inviteCount ?? 0}</strong>
           </div>
 
-          {!userId && <p className="hint">Open inside Telegram to generate a personal invite link.</p>}
+          {err && <div className="error">Error: {err}</div>}
+
+          <div className="link-box">
+            <div className="link-text">{inviteLink}</div>
+            <div className="actions">
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(inviteLink);
+                    tg?.showPopup ? tg.showPopup({ message: 'Link copied' }) : alert('Link copied');
+                  } catch {
+                    tg?.showPopup ? tg.showPopup({ message: 'Copy failed' }) : alert('Copy failed');
+                  }
+                }}
+              >
+                Copy link
+              </button>
+
+              <button
+                onClick={() => {
+                  const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
+                  if (tg?.openTelegramLink) tg.openTelegramLink(url);
+                  else window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+              >
+                Share on Telegram
+              </button>
+            </div>
+
+            {!userId && <p className="hint">Open inside Telegram to generate a personal invite link.</p>}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <div className="invite-end-spacer" />
+    </div>
   );
 }
