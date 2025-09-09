@@ -1,0 +1,12 @@
+.wd-page { min-height: 100%; padding: 24px; display: grid; gap: 16px; box-sizing: border-box; }
+.wd-balance { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); backdrop-filter: blur(8px); }
+.wd-form { display: grid; gap: 12px; max-width: 720px; }
+.wd-label { display: grid; gap: 6px; font-size: 14px; position: relative; }
+.wd-label input { width: 100%; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: inherit; padding: 0 12px; outline: none; }
+.wd-mini { position: absolute; right: 6px; top: 26px; height: 28px; padding: 0 8px; border-radius: 8px; border: 0; background: rgba(255,255,255,0.18); color: inherit; }
+.wd-submit { height: 44px; border: 0; border-radius: 12px; background: #6c8cff; color: #fff; font-weight: 600; }
+.wd-submit:disabled { opacity: 0.6; }
+.wd-error { color: #ff8f8f; }
+.wd-valid { color: #8fffbc; font-size: 12px; }
+.wd-ok { color: #8fffbc; }
+.wd-hint { max-width: 720px; }
