@@ -46,7 +46,7 @@ export default function Withdraw() {
   const [ok, setOk] = useState<string | null>(null);
 
   // Basic BEP20/ETH-like address check (0x-prefixed, 40 hex)
-  const isEvmAddress = (a: string) => /^0x[a-fA-F0-9]{40}$/.test(a.trim());
+  const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a).trim());
 
   const disabled = useMemo(() => {
     const v = Number(amount);
