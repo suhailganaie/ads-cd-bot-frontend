@@ -14,7 +14,7 @@ export default function Earn() {
   const [ptsError, setPtsError] = useState(null);
   const [token, setToken] = useState(null);
 
-  // Load points + token
+  // Login + points
   useEffect(() => {
     let alive = true;
     const telegram_id = tgUser?.id ? String(tgUser.id) : import.meta.env.VITE_DEV_TID || 'guest';
@@ -39,7 +39,7 @@ export default function Earn() {
       }
     })();
     return () => { alive = false; };
-  }, [API, tgUser?.id, tgUser?.username]); // Login + points [web:3324]
+  }, [API, tgUser?.id, tgUser?.username]); // [10]
 
   const canShow = cooldown === 0;
 
@@ -52,7 +52,7 @@ export default function Earn() {
         return s - 1;
       });
     }, 1000);
-  }; // Frequency capping for interstitials improves UX and compliance. [web:3748][web:3746]
+  }; // Interstitial frequency capping best practice. [11][12]
 
   const postWithAuth = async (path) => {
     if (!token) throw new Error('No token');
@@ -69,11 +69,11 @@ export default function Earn() {
     if (!canShow || typeof window.show_9822309 !== 'function') return;
     try {
       await window.show_9822309('pop');
-      setTotalPoints(p => (p ?? 0) + 2);
+      setTotalPoints((p) => (p ?? 0) + 2);
       await postWithAuth('/ads/main');
       startCooldown();
     } catch {
-      setTotalPoints(p => (p ?? 0) - 2);
+      setTotalPoints((p) => (p ?? 0) - 2);
     }
   };
 
@@ -81,70 +81,70 @@ export default function Earn() {
     if (!canShow || typeof window.show_9822309 !== 'function') return;
     try {
       await window.show_9822309();
-      setTotalPoints(p => (p ?? 0) + 1);
+      setTotalPoints((p) => (p ?? 0) + 1);
       await postWithAuth('/ads/side');
       startCooldown();
     } catch {
-      setTotalPoints(p => (p ?? 0) - 1);
+      setTotalPoints((p) => (p ?? 0) - 1);
     }
   };
 
-  // Adexium helpers: create instance once per click, listen, request, then reward on playback completed
-  const runAdexium = async ({ wid, format, rewardPath, rewardDelta }) => {
+  // Adexium: request -> receive -> display; reward on playback completed
+  const runAdexium = async ({ wid, format, rewardPath, rewardDelta, fullScreen = false }) => {
     if (!canShow || !window.AdexiumWidget) return;
     return new Promise((resolve) => {
       try {
         const adx = new window.AdexiumWidget({
           wid,
           adFormat: format,
-          // debug: true, // enable during testing only
+          isFullScreen: fullScreen || false,
+          // debug: true, // enable while testing only
         });
 
-        const onReceived = (ad) => {
-          adx.displayAd(ad);
-        };
+        const onReceived = (ad) => adx.displayAd(ad);
         const onCompleted = async () => {
-          adx.off?.('adReceived', onReceived);
-          adx.off?.('adPlaybackCompleted', onCompleted);
-          adx.off?.('noAdFound', onNoAd);
-          // reward after confirmed completion
-          setTotalPoints(p => (p ?? 0) + rewardDelta);
-          try { await postWithAuth(rewardPath); } catch { setTotalPoints(p => (p ?? 0) - rewardDelta); }
+          cleanup();
+          setTotalPoints((p) => (p ?? 0) + rewardDelta);
+          try { await postWithAuth(rewardPath); } catch { setTotalPoints((p) => (p ?? 0) - rewardDelta); }
           startCooldown();
           resolve('done');
         };
-        const onNoAd = () => {
+        const onNoAd = () => { cleanup(); resolve('noAd'); };
+
+        const cleanup = () => {
           adx.off?.('adReceived', onReceived);
           adx.off?.('adPlaybackCompleted', onCompleted);
           adx.off?.('noAdFound', onNoAd);
-          resolve('noAd');
         };
 
         adx.on?.('adReceived', onReceived);
         adx.on?.('adPlaybackCompleted', onCompleted);
         adx.on?.('noAdFound', onNoAd);
 
-        adx.requestAd?.(format); // request immediately for click-to-earn
+        adx.requestAd?.(format); // immediate attempt for click-to-earn
       } catch {
         resolve();
       }
     });
-  }; // Matches Adexium advanced integration events and flow. [web:3707]
+  }; // Adexium advanced integration events. [8]
 
-  // New partner buttons mapped to existing backend
-  const adxMain = () => runAdexium({
-    wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
-    format: 'interstitial',
-    rewardPath: '/ads/main',
-    rewardDelta: 2
-  });
+  // New partner
+  const adxMain = () =>
+    runAdexium({
+      wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
+      format: 'interstitial',
+      rewardPath: '/ads/main',
+      rewardDelta: 2,
+      fullScreen: true, // interstitials may require fullscreen in webviews
+    });
 
-  const adxSide = () => runAdexium({
-    wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
-    format: 'push-like',
-    rewardPath: '/ads/side',
-    rewardDelta: 1
-  });
+  const adxSide = () =>
+    runAdexium({
+      wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
+      format: 'push-like',
+      rewardPath: '/ads/side',
+      rewardDelta: 1,
+    });
 
   return (
     <div className="card">
@@ -164,7 +164,7 @@ export default function Earn() {
           EARN (1) {cooldown ? `• ${cooldown}s` : ''}
         </button>
 
-        {/* Adexium partner mapped to same endpoints */}
+        {/* Adexium partner */}
         <button className="ad-button main" onClick={adxMain} disabled={!canShow || !token}>
           EARN (2) – A {cooldown ? `• ${cooldown}s` : ''}
         </button>
