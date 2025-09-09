@@ -1,5 +1,6 @@
+// src/pages/Invite/Invite.jsx
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import '../../styles/invite.css'; // card-only styles; layout and padding come from App.css
+import '../../styles/invite.css'; // component-only styles; layout comes from App.css [web:4251]
 
 const API = import.meta.env?.VITE_API_BASE || '';
 
@@ -12,31 +13,32 @@ export default function Invite() {
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
 
-  // Identity headers (x-telegram-id; optional tma)
+  // Use Telegram ready/expand to stabilize the webview height [web:4106]
+  useEffect(() => { try { tg?.ready?.(); tg?.expand?.(); } catch {} }, []); // no trailing comment in code [web:4106]
+
+  // Identity headers (x-telegram-id; optional tma) [web:4106]
   const authHeaders = useMemo(() => {
     const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend verifies initData, uncomment:
+    // If backend verifies initData, you can also send:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Uses shared shell; no local layout here. [web:4106]
+  }, [userId, initDataRaw]); // consistent across requests [web:4106]
 
-  // Ready + expand as early as possible
-
-  // Deep link for sharing (appears as start_param for invitees)
+  // Deep link for sharing (shows as start_param for invitees) [web:4106]
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
-  }, [userId]); // Pure string build. [web:4106]
+  }, [userId]); // pure string build [web:4106]
 
-  // Optional Mini App handshake
+  // Optional Mini App handshake (safe no-op outside Telegram) [web:4106]
   useEffect(() => {
     if (!API || !initDataRaw) return;
     fetch(`${API}/session/open`, { method: 'POST', headers: { Authorization: `tma ${initDataRaw}` } })
       .catch(() => {});
-  }, [API, initDataRaw]); // Background handshake; safe if unsupported. [web:4106]
+  }, [API, initDataRaw]); // background handshake [web:4106]
 
-  // Auto-claim referral idempotently
+  // Auto-claim referral once per inviter/invitee pair [web:4106]
   useEffect(() => {
     if (!API || !startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
@@ -48,9 +50,9 @@ export default function Invite() {
     }).catch(() => {}).finally(() => {
       localStorage.setItem(key, '1');
     });
-  }, [API, startParam, userId, authHeaders]); // One-time per pair. [web:4106]
+  }, [API, startParam, userId, authHeaders]); // idempotent claim [web:4106]
 
-  // Invite count
+  // Invite count + background refresh when visible [web:4106]
   const [inviteCount, setInviteCount] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -65,10 +67,9 @@ export default function Invite() {
     } catch (e) {
       setErr(String(e?.message || e));
     }
-  }, [API, authHeaders]); // Header-consistent fetch. [web:4106]
+  }, [API, authHeaders]); // robust fetch [web:4106]
 
-  // Initial and visibility-aware polling
-  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // mount [web:4106]
+  useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]); // initial load [web:4106]
   useEffect(() => {
     let id;
     const tick = () => fetchInviteCount();
@@ -78,11 +79,11 @@ export default function Invite() {
     onVis();
     document.addEventListener('visibilitychange', onVis);
     return () => { document.removeEventListener('visibilitychange', onVis); stop(); };
-  }, [fetchInviteCount]); // poll only when visible [web:4106]
+  }, [fetchInviteCount]); // only poll when visible [web:4106]
 
   return (
     <>
-      {/* Render inside the global .app shell (provided by App.jsx) */}
+      {/* Render inside the global .app shell provided by App.css */}
       <div className="invite-card">
         <h3 className="inv-title">Invite friends</h3>
         <p className="inv-sub">Share a personal link to earn rewards.</p>
@@ -96,6 +97,7 @@ export default function Invite() {
 
         <div className="inv-linkbox">
           <div className="inv-link">{inviteLink}</div>
+
           <div className="inv-actions">
             <button
               className="btn"
