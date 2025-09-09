@@ -10,8 +10,9 @@ export default function Withdraw() {
   const userId = user?.id ? String(user.id) : '';
   const username = user?.username || '';
 
-  // Obtain JWT once (backend issues token via /api/auth/login)
+  // 1) Login once to obtain JWT; also seed points from login response
   const [token, setToken] = useState('');
+  const [balance, setBalance] = useState(null); // points
   useEffect(() => {
     if (!API || !userId) return;
     fetch(`${API}/auth/login`, {
@@ -20,21 +21,24 @@ export default function Withdraw() {
       body: JSON.stringify({ telegram_id: userId, username }),
     })
       .then((r) => r.json())
-      .then((d) => d?.token && setToken(d.token))
+      .then((d) => {
+        if (d?.token) setToken(d.token);
+        if (Number.isFinite(Number(d?.user?.points))) setBalance(Number(d.user.points));
+      })
       .catch(() => {});
-  }, [API, userId, username]); // Retrieves JWT used below. [6][7]
+  }, [API, userId, username]); // Retrieve JWT + initial points. [web:4131][web:4170]
 
-  // Build auth headers: prefer Bearer, else x-telegram-id fallback
+  // 2) Build headers: prefer Bearer JWT, else x-telegram-id fallback
   const authHeaders = useMemo(() => {
     const h = {};
     if (token) h.Authorization = `Bearer ${token}`;
     else if (userId) h['x-telegram-id'] = userId;
     return h;
-  }, [token, userId]); // Sends proper Authorization header for protected route. [2][6]
+  }, [token, userId]); // Ensures same identity for all endpoints. [web:4131]
 
   useEffect(() => { try { tg?.expand?.(); tg?.ready?.(); } catch {} }, []);
 
-  // Rules (ratio/min) for UX
+  // 3) Rules (ratio/min) used for conversion & validation
   const [rules, setRules] = useState({ ratio: 100, min_tokens: 10 });
   useEffect(() => {
     if (!API) return;
@@ -42,27 +46,29 @@ export default function Withdraw() {
       .then((r) => r.json())
       .then((d) => d && setRules(d))
       .catch(() => {});
-  }, [API]); // Fetches min_tokens and ratio used in validation. [7]
+  }, [API]); // Pull min_tokens and ratio for client UX. [web:4113]
 
-  // Balance (points)
-  const [balance, setBalance] = useState(null);
+  // 4) Balance fetch (points) with same headers as protected routes
   const [loadingBal, setLoadingBal] = useState(false);
-
   const fetchBalance = useCallback(async () => {
     if (!API) return;
     setLoadingBal(true);
     try {
       const res = await fetch(`${API}/ads/balance`, { headers: authHeaders });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && typeof data?.points === 'number') setBalance(data.points);
+      if (res.ok && Number.isFinite(Number(data?.points))) {
+        setBalance(Number(data.points));
+      }
     } catch {}
     setLoadingBal(false);
   }, [API, authHeaders]);
 
-  useEffect(() => { fetchBalance(); }, [fetchBalance]);
+  // Refresh on mount and whenever token becomes available
+  useEffect(() => { fetchBalance(); }, [fetchBalance]); // mount [web:4188]
+  useEffect(() => { if (token) fetchBalance(); }, [token, fetchBalance]); // after JWT arrives [web:4131]
 
-  // Form state (tokens, not points)
-  const [tokens, setTokens] = useState('');
+  // 5) Form state (tokens)
+  const [tokens, setTokens] = useState(''); // integer tokens to withdraw
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -70,10 +76,11 @@ export default function Withdraw() {
 
   const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a || '').trim());
 
-  const maxTokens = useMemo(() => {
-    const pts = Number(balance || 0);
-    return Math.floor(pts / (rules?.ratio || 100));
-  }, [balance, rules]); // Converts points → max token amount. [7]
+  // Convert points → tokens for display and Max
+  const ratio = Number(rules?.ratio || 100);
+  const tokensFromPoints = (Number(balance || 0) / ratio);
+  const tokensDisplay = Number.isFinite(tokensFromPoints) ? tokensFromPoints.toFixed(3) : '—'; // 3 decimals [web:4154]
+  const maxTokens = Math.floor((Number(balance || 0)) / ratio); // integer cap from points [web:4113]
 
   const disabled = useMemo(() => {
     const t = Number(tokens);
@@ -81,8 +88,9 @@ export default function Withdraw() {
     if (!isEvmAddress(address)) return true;
     if (balance !== null && t > maxTokens) return true;
     return false;
-  }, [API, tokens, address, balance, rules, maxTokens]); // Mirror server-side validation. [14]
+  }, [API, tokens, address, balance, rules, maxTokens]); // Mirror server checks. [web:4114]
 
+  // 6) Submit → POST /api/withdrawals with { tokens, address }
   const submit = async (e) => {
     e?.preventDefault?.();
     setError(null); setOk(null);
@@ -101,7 +109,7 @@ export default function Withdraw() {
       } else {
         setOk('Withdrawal request submitted');
         setTokens(''); setAddress('');
-        fetchBalance();
+        fetchBalance(); // reflect debited points
       }
     } catch (err) {
       setError(String(err?.message || err));
@@ -116,8 +124,8 @@ export default function Withdraw() {
       <p className="muted">Send tokens to a BEP20 (ERC20-format) address.</p>
 
       <div className="wd-balance">
-        <span>Balance (points)</span>
-        <strong>{loadingBal ? '…' : (balance ?? '—')}</strong>
+        <span>Balance (tokens)</span>
+        <strong>{loadingBal ? '…' : tokensDisplay}</strong>
       </div>
 
       <form className="wd-form" onSubmit={submit}>
@@ -136,7 +144,7 @@ export default function Withdraw() {
             type="button"
             className="wd-mini"
             onClick={() => setTokens(String(Math.max(rules.min_tokens, maxTokens)))}
-            disabled={maxTokens < rules.min_tokens}
+            disabled={!Number.isFinite(balance) || maxTokens < rules.min_tokens}
           >
             Max ({maxTokens})
           </button>
@@ -166,7 +174,7 @@ export default function Withdraw() {
       </form>
 
       <p className="wd-hint muted">
-        Tokens convert at {rules.ratio} points each; min {rules.min_tokens} tokens per request.
+        {rules.ratio} points = 1 token. Displayed to 3 decimals; min {rules.min_tokens} tokens per request.
       </p>
     </main>
   );
