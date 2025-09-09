@@ -1,6 +1,6 @@
 // src/pages/Invite/Invite.jsx
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import '../../styles/invite.css';
+import '../../styles/invite.css'; // card-only styles; layout comes from App.css
 
 const API = import.meta.env?.VITE_API_BASE || '';
 
@@ -13,31 +13,31 @@ export default function Invite() {
   const BOT_USERNAME = 'ADS_Cd_bot';
   const APP_NAME = 'ADS';
 
-  // Identity headers
+  // Identity headers (same as backend)
   const authHeaders = useMemo(() => {
     const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend verifies initData, you can also send:
+    // Optional verified initData:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Consistent identity across requests. [7]
+  }, [userId, initDataRaw]); // Uses global shell; no page CSS padding here. [web:4252]
 
-  useEffect(() => { try { tg?.expand?.(); tg?.ready?.(); } catch {} }, []);
+  useEffect(() => { try { tg?.ready?.(); tg?.expand?.(); } catch {} }, []);
 
-  // Deep link with startapp payload
+  // Deep link that appears as start_param for invitees
   const inviteLink = useMemo(() => {
     const base = `https://t.me/${BOT_USERNAME}/${APP_NAME}`;
     return userId ? `${base}?startapp=${encodeURIComponent(userId)}` : base;
   }, [userId]);
 
-  // Optional Mini App handshake
+  // Optional Mini App handshake (no-op in web)
   useEffect(() => {
     if (!API || !initDataRaw) return;
     fetch(`${API}/session/open`, { method: 'POST', headers: { Authorization: `tma ${initDataRaw}` } })
       .catch(() => {});
-  }, [API, initDataRaw]);
+  }, [API, initDataRaw]); // Matches Home behavior; still uses App.css for layout. [web:4252]
 
-  // Auto-claim referral (idempotent)
+  // Auto-claim once per inviter/invitee pair
   useEffect(() => {
     if (!API || !startParam || !userId || startParam === userId) return;
     const key = `invite:auto:${userId}:${startParam}`;
@@ -49,9 +49,9 @@ export default function Invite() {
     }).catch(() => {}).finally(() => {
       localStorage.setItem(key, '1');
     });
-  }, [API, startParam, userId, authHeaders]);
+  }, [API, startParam, userId, authHeaders]); // Idempotent claim. [web:4252]
 
-  // Invite count with visibility-aware refresh
+  // Invite count with visibility-aware polling
   const [inviteCount, setInviteCount] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -66,9 +66,8 @@ export default function Invite() {
     } catch (e) {
       setErr(String(e?.message || e));
     }
-  }, [API, authHeaders]);
+  }, [API, authHeaders]); // Relies on headers only; no local layout. [web:4252]
 
-  // Initial load + visible polling
   useEffect(() => { fetchInviteCount(); }, [fetchInviteCount]);
   useEffect(() => {
     let id;
@@ -79,54 +78,40 @@ export default function Invite() {
     onVis();
     document.addEventListener('visibilitychange', onVis);
     return () => { document.removeEventListener('visibilitychange', onVis); stop(); };
-  }, [fetchInviteCount]); // Poll when visible to user. [19]
+  }, [fetchInviteCount]); // Background refresh; consistent with Home. [web:4252]
 
   return (
-    <div className="invite-page">
-      <section className="invite-scene">
-        <div className="glass-card">
-          <h3 className="title">Invite friends</h3>
-          <p className="subtitle">Share a personal link to earn rewards.</p>
+    // Important: render inside the global .app shell from App.jsx, not a page wrapper here
+    <div className="invite-card">
+      <h3 className="inv-title">Invite friends</h3>
+      <p className="inv-sub">Share a personal link to earn rewards.</p>
 
-          <div className="metric">
-            <span>Invites</span>
-            <strong>{inviteCount ?? 0}</strong>
-          </div>
+      <div className="inv-metric">
+        <span>Invites</span>
+        <strong>{inviteCount ?? 0}</strong>
+      </div>
 
-          {err && <div className="error">Error: {err}</div>}
+      {err && <div className="inv-error">Error: {err}</div>}
 
-          <div className="link-box">
-            <div className="link-text">{inviteLink}</div>
-            <div className="actions">
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(inviteLink);
-                    tg?.showPopup ? tg.showPopup({ message: 'Link copied' }) : alert('Link copied');
-                  } catch {
-                    tg?.showPopup ? tg.showPopup({ message: 'Copy failed' }) : alert('Copy failed');
-                  }
-                }}
-              >
-                Copy link
-              </button>
+      <div className="inv-linkbox">
+        <div className="inv-link">{inviteLink}</div>
+        <div className="inv-actions">
+          <button className="btn" onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(inviteLink);
+              tg?.showPopup ? tg.showPopup({ message: 'Link copied' }) : alert('Link copied');
+            } catch {
+              tg?.showPopup ? tg.showPopup({ message: 'Copy failed' }) : alert('Copy failed');
+            }
+          }}>Copy link</button>
 
-              <button
-                onClick={() => {
-                  const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
-                  if (tg?.openTelegramLink) tg.openTelegramLink(url);
-                  else window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-              >
-                Share on Telegram
-              </button>
-            </div>
-
-            {!userId && <p className="hint">Open inside Telegram to generate a personal invite link.</p>}
-          </div>
+          <button className="btn primary" onClick={() => {
+            const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join ADS BOT and earn rewards!')}`;
+            if (tg?.openTelegramLink) tg.openTelegramLink(url);
+            else window.open(url, '_blank', 'noopener,noreferrer');
+          }}>Share on Telegram</button>
         </div>
-      </section>
-      <div className="invite-end-spacer" />
+      </div>
     </div>
   );
 }
