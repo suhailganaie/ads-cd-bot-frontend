@@ -4,14 +4,15 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
     />
     <title>ADS BOT</title>
 
-    <!-- Telegram Mini Apps SDK (required if not using @telegram-apps/sdk) -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Load ad SDKs after Telegram; use defer so they don’t block rendering -->
-    <script defer src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script>
+    <!-- Telegram Mini Apps SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Required by TMA before any app logic [web:3300] -->
+
+    <!-- Ad SDKs (deferred) -->
+    <script defer src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script> <!-- Correct SDK per docs [web:3707] -->
     <script
       defer
       src="//libtl.com/sdk.js"
@@ -19,17 +20,15 @@
       data-sdk="show_9822309"
     ></script>
 
-    <!-- Optional: basic scheduler to prevent overlapping interstitials -->
+    <!-- Unified ad helper + anti-overlap queue -->
     <script>
       window.addEventListener('DOMContentLoaded', () => {
-        // Telegram init for better viewport behavior inside Mini Apps
         try {
           const tg = window?.Telegram?.WebApp;
           tg?.ready?.();
           tg?.expand?.();
         } catch {}
 
-        // Queue ensures only one interstitial runs at a time
         const queue = [];
         let showing = false;
         const next = () => {
@@ -37,47 +36,87 @@
           const job = queue.shift();
           if (!job) return;
           showing = true;
-          Promise.resolve()
-            .then(job)
+          Promise.resolve(job())
             .catch(() => {})
             .finally(() => {
               showing = false;
-              setTimeout(next, 1500);
+              setTimeout(next, 1200);
             });
         };
 
-        // Expose helpers so pages can trigger ads: window.ads.show('adexium'|'montage')
+        // Request + display flow for Adexium as per advanced integration
+        function showAdexium(opts) {
+          return new Promise((resolve) => {
+            try {
+              if (!window.AdexiumWidget) return resolve();
+              const adx = new window.AdexiumWidget({
+                wid: opts.wid,
+                adFormat: opts.format || 'interstitial',
+                // debug: true, // enable only while testing [remove in prod]
+              });
+
+              const onRecv = (ad) => {
+                adx.displayAd(ad);
+              };
+              const onDone = () => {
+                adx.off?.('adReceived', onRecv);
+                adx.off?.('adPlaybackCompleted', onDone);
+                resolve('done');
+              };
+              const onNo = () => {
+                adx.off?.('noAdFound', onNo);
+                resolve('noAd');
+              };
+
+              adx.on?.('adReceived', onRecv);
+              adx.on?.('adPlaybackCompleted', onDone);
+              adx.on?.('noAdFound', onNo);
+
+              adx.requestAd?.(opts.format || 'interstitial');
+            } catch {
+              resolve();
+            }
+          });
+        }
+
+        // Montage/libtl example
+        function showMontage() {
+          return new Promise((resolve) => {
+            try {
+              const fn = window?.show_9822309;
+              if (typeof fn === 'function') {
+                const p = fn({
+                  type: 'inApp',
+                  inAppSettings: {
+                    frequency: 1,
+                    capping: 1,
+                    interval: 3600,
+                    timeout: 50,
+                    everyPage: false,
+                  },
+                });
+                if (p?.then) p.then(() => resolve('done')).catch(() => resolve());
+                else resolve('done');
+              } else {
+                resolve();
+              }
+            } catch {
+              resolve();
+            }
+          });
+        }
+
+        // Public API for pages
         window.ads = {
           show(provider, opts = {}) {
             queue.push(() => {
               if (provider === 'adexium') {
-                try {
-                  // Use interstitial or push-like as needed
-                  const w = new AdexiumWidget({
-                    wid: opts.wid || 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
-                    adFormat: opts.format || 'interstitial',
-                  });
-                  w.autoMode();
-                } catch {}
-              } else if (provider === 'montage') {
-                try {
-                  // Example second network via libtl (exposes global show_9822309)
-                  const fn = window?.show_9822309;
-                  if (typeof fn === 'function') {
-                    const p = fn({
-                      type: 'inApp',
-                      inAppSettings: {
-                        frequency: 1,
-                        capping: 1,
-                        interval: 3600,
-                        timeout: 50,
-                        everyPage: false,
-                      },
-                    });
-                    if (p?.catch) p.catch(() => {});
-                  }
-                } catch {}
+                return showAdexium(opts); // follows requestAd -> adReceived -> displayAd [web:3707]
               }
+              if (provider === 'montage') {
+                return showMontage();
+              }
+              return Promise.resolve();
             });
             next();
           },
