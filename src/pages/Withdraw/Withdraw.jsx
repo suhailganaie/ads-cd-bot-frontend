@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 
-import './withdraw.css';
+import '../../styles/withdraw.css';
 const API = import.meta.env?.VITE_API_BASE || '';
 
 export default function Withdraw() {
