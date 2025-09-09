@@ -43,6 +43,7 @@ export default function App() {
           <Link to="/earn" className="nav-item"><span className="nav-label">Earn</span></Link>
           <Link to="/tasks" className="nav-item"><span className="nav-label">Tasks</span></Link>
           <Link to="/invite" className="nav-item"><span className="nav-label">Invite</span></Link>
+          <Link to="/withdraw" className="nav-item"><span className="nav-label">Withdraw</span></Link>
         </nav>
       </div>
     </BrowserRouter>
