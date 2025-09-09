@@ -1,5 +1,6 @@
 // src/pages/Home/Home.jsx
 import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import '../../styles/Home.css';
 
 const API = import.meta.env.VITE_API_BASE;
@@ -64,6 +65,9 @@ export default function Home() {
     return () => { alive = false; };
   }, [API, telegram_id, username, inviteHeaders]); // Standard React fetching with cleanup. [web:3868]
 
+  // Optional programmatic navigation if preferred
+  const nav = useNavigate();
+
   return (
     <main className="home-page">
       <section className="panel depth depth-1">
@@ -81,9 +85,14 @@ export default function Home() {
         </div>
 
         <footer className="panel-foot">
-          {/* Route CTAs */}
-          <a href="#/earn" className="btn primary">Start earning</a>
-          <a href="#/tasks" className="btn ghost">View tasks</a>
+          {/* Option A: Declarative navigation */}
+          <NavLink to="/earn" className="btn primary">Start earning</NavLink>
+          <NavLink to="/tasks" className="btn ghost">View tasks</NavLink>
+
+          {/* Option B: Programmatic navigation (uncomment to use)
+          <button className="btn primary" onClick={() => nav('/earn')}>Start earning</button>
+          <button className="btn ghost" onClick={() => nav('/tasks')}>View tasks</button>
+          */}
         </footer>
       </section>
 
