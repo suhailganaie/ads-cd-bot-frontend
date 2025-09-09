@@ -2,6 +2,8 @@
 /* This file intentionally avoids page layout, background, or safe-area.
    App.css provides the global shell (.app), gradient, and bottom padding. */
 
+.invite-card { margin-bottom: 8px; }
+
 /* Glass invite card (matches Home look) */
 .invite-card {
   position: relative;
