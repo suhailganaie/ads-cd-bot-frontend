@@ -6,7 +6,7 @@ const Home = lazy(() => import('./pages/Home/Home'));
 const Earn = lazy(() => import('./pages/Earn/Earn'));
 const Tasks = lazy(() => import('./pages/Tasks/Tasks'));
 const Invite = lazy(() => import('./pages/Invite/Invite'));
-const Invite = lazy(() => import('./pages/Withdraw/Withdraw'));
+const Withdraw = lazy(() => import('./pages/Withdraw/Withdraw'));
 
 const NotFound = () => (
   <div className="app">
