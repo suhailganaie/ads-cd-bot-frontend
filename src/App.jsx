@@ -1,15 +1,17 @@
 // src/App.jsx
 import React, { useEffect, Suspense } from 'react';
-import { BrowserRouter, Link } from 'react-router-dom';
+import { BrowserRouter, NavLink } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
 import './styles/App.css';
 
 export default function App() {
   useEffect(() => {
     const tg = window?.Telegram?.WebApp;
-    if (tg && typeof tg.ready === 'function') tg.ready();
-    if (tg && typeof tg.expand === 'function') tg.expand();
-  }, []); // Safe Telegram guards to avoid runtime errors/blank screens [1][13]
+    try {
+      if (tg && typeof tg.ready === 'function') tg.ready();
+      if (tg && typeof tg.expand === 'function') tg.expand();
+    } catch {}
+  }, []); // Call ready/expand early for a native feel in Telegram. [web:3300]
 
   useEffect(() => {
     const show = window?.show_9822309;
@@ -22,7 +24,7 @@ export default function App() {
         if (p?.catch) p.catch(() => {});
       } catch {}
     }
-  }, []); // Defensive init to avoid white screen from uncaught errors [1][16]
+  }, []); // Defensive wrapper to avoid uncaught errors interrupting render. [web:3461]
 
   return (
     <BrowserRouter>
@@ -32,18 +34,26 @@ export default function App() {
           <p className="muted">Ad Rewards Platform</p>
         </header>
 
-        {/* Removed the Welcome card section here */}
-
         <Suspense fallback={<div className="muted">Loading…</div>}>
           <AppRoutes />
         </Suspense>
 
         <nav className="bottom-nav">
-          <Link to="/" className="nav-item"><span className="nav-label">Home</span></Link>
-          <Link to="/earn" className="nav-item"><span className="nav-label">Earn</span></Link>
-          <Link to="/tasks" className="nav-item"><span className="nav-label">Tasks</span></Link>
-          <Link to="/invite" className="nav-item"><span className="nav-label">Invite</span></Link>
-          <Link to="/withdraw" className="nav-item"><span className="nav-label">Withdraw</span></Link>
+          <NavLink to="/" end className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-label">Home</span>
+          </NavLink>
+          <NavLink to="/earn" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-label">Earn</span>
+          </NavLink>
+          <NavLink to="/tasks" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-label">Tasks</span>
+          </NavLink>
+          <NavLink to="/invite" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-label">Invite</span>
+          </NavLink>
+          <NavLink to="/withdraw" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-label">Withdraw</span>
+          </NavLink>
         </nav>
       </div>
     </BrowserRouter>
