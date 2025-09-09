@@ -8,22 +8,23 @@ export default function Withdraw() {
   const initDataRaw = tg?.initData || '';
   const userId = unsafe?.user?.id ? String(unsafe.user.id) : '';
 
-  // Use same auth scheme as Invite: prefer x-telegram-id for this project
+  // Use same auth scheme as Invite: x-telegram-id
   const authHeaders = useMemo(() => {
     const h = {};
     if (userId) h['x-telegram-id'] = userId;
-    // If backend also supports tma, you may enable:
+    // If backend also accepts tma, enable:
     // if (initDataRaw) h['Authorization'] = `tma ${initDataRaw}`;
     return h;
-  }, [userId, initDataRaw]); // Match existing endpoints identity pattern. [web:3346][web:3332]
+  }, [userId, initDataRaw]); // Keep identity consistent across endpoints. [web:3346][web:3332]
 
   useEffect(() => {
     try { tg?.expand?.(); tg?.ready?.(); } catch {}
-  }, []);
+  }, []); // Fill Telegram viewport reliably. [web:3300]
 
-  // Load balance (points) to guide the amount entry
-  const [balance, setBalance] = useState<number | null>(null);
+  // Balance
+  const [balance, setBalance] = useState(null);
   const [loadingBal, setLoadingBal] = useState(false);
+
   const fetchBalance = useCallback(async () => {
     if (!API) return;
     setLoadingBal(true);
@@ -33,31 +34,31 @@ export default function Withdraw() {
       if (res.ok && typeof data?.points === 'number') setBalance(data.points);
     } catch {}
     setLoadingBal(false);
-  }, [API, authHeaders]); // Same header consistency as other screens. [web:3346]
+  }, [API, authHeaders]); // Same headers as other screens. [web:3346]
 
   useEffect(() => { fetchBalance(); }, [fetchBalance]); // on mount [web:3346]
 
-  // Form state (BEP20/ERC20)
+  // Form state
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
-  const [note, setNote] = useState(''); // optional memo/tag if needed later
+  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
+  const [error, setError] = useState(null);
+  const [ok, setOk] = useState(null);
 
-  // Basic BEP20/ETH-like address check (0x-prefixed, 40 hex)
-  const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a).trim());
+  // BEP20/ERC20 address check (0x + 40 hex)
+  const isEvmAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(String(a || '').trim());
 
   const disabled = useMemo(() => {
     const v = Number(amount);
-    if (!API || !v || v <= 0) return true;
+    if (!API || !v || !(v > 0)) return true;
     if (!address || !isEvmAddress(address)) return true;
-    if (balance !== null && v > balance) return true;
+    if (balance !== null && v > Number(balance)) return true;
     return false;
-  }, [API, amount, address, balance]); // Client-side guard; server validates too. [web:3600]
+  }, [API, amount, address, balance]); // Client guard; server validates too. [web:3600]
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (e) => {
+    e?.preventDefault?.();
     setError(null); setOk(null);
     if (disabled) return;
     setSubmitting(true);
@@ -66,11 +67,11 @@ export default function Withdraw() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
-          method: 'BEP20',                 // explicit network/method for backend
-          chain: 'bsc',                    // or 'bep20' if your backend expects this
-          token_standard: 'erc20',         // many backends alias BEP20 as erc20
-          amount: Number(amount),          // backend will convert to token units
-          address: address.trim(),
+          method: 'BEP20',
+          chain: 'bsc',
+          token_standard: 'erc20',
+          amount: Number(amount),
+          address: String(address).trim(),
           memo: note || undefined
         }),
       });
@@ -80,10 +81,10 @@ export default function Withdraw() {
       } else {
         setOk('Withdrawal request submitted');
         setAmount(''); setAddress(''); setNote('');
-        fetchBalance(); // refresh balance after request
+        fetchBalance();
       }
-    } catch (e: any) {
-      setError(String(e?.message || e));
+    } catch (err) {
+      setError(String((err && err.message) || err));
     } finally {
       setSubmitting(false);
     }
@@ -96,7 +97,7 @@ export default function Withdraw() {
 
       <div className="wd-balance">
         <span>Balance</span>
-        <strong>{loadingBal ? '…' : balance ?? '—'}</strong>
+        <strong>{loadingBal ? '…' : (balance ?? '—')}</strong>
       </div>
 
       <form className="wd-form" onSubmit={submit}>
@@ -156,7 +157,7 @@ export default function Withdraw() {
       </form>
 
       <p className="wd-hint muted">
-        BEP20 addresses are EVM style and start with 0x; double-check chain and address before submitting as transfers are irreversible.
+        BEP20 addresses start with 0x; verify chain and address before submitting. Transfers are irreversible.
       </p>
     </main>
   );
