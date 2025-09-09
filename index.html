@@ -9,16 +9,35 @@
     <title>ADS BOT</title>
 
     <!-- Telegram Mini Apps SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Required by TMA before any app logic [web:3300] -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Early viewport bootstrap for Telegram webview -->
+    <script>
+      (function () {
+        try {
+          // Provide stable CSS vars for layout before app styles mount.
+          const tg = window.Telegram && window.Telegram.WebApp;
+          if (tg) {
+            // Bind safe CSS tokens on load and react to viewport updates.
+            const apply = () => {
+              const h = tg.viewportStableHeight || tg.viewportHeight || 0;
+              document.documentElement.style.setProperty('--tg-viewport-stable-height', h ? (h + 'px') : '100vh');
+            };
+            tg.onEvent?.('viewportChanged', apply);
+            apply();
+
+            // Signal readiness and try expanding when possible.
+            tg.ready?.();
+            tg.expand?.();
+          }
+        } catch {}
+      })();
+    </script>
 
     <!-- Ad SDKs (deferred) -->
-    <script defer src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script> <!-- Correct SDK per docs [web:3707] -->
-    <script
-      defer
-      src="//libtl.com/sdk.js"
-      data-zone="9822309"
-      data-sdk="show_9822309"
-    ></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
+    <script defer src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script>
+    <script defer src="//libtl.com/sdk.js" data-zone="9822309" data-sdk="show_9822309"></script>
 
     <!-- Unified ad helper + anti-overlap queue -->
     <script>
@@ -44,7 +63,6 @@
             });
         };
 
-        // Request + display flow for Adexium as per advanced integration
         function showAdexium(opts) {
           return new Promise((resolve) => {
             try {
@@ -52,12 +70,9 @@
               const adx = new window.AdexiumWidget({
                 wid: opts.wid,
                 adFormat: opts.format || 'interstitial',
-                // debug: true, // enable only while testing [remove in prod]
               });
 
-              const onRecv = (ad) => {
-                adx.displayAd(ad);
-              };
+              const onRecv = (ad) => adx.displayAd(ad);
               const onDone = () => {
                 adx.off?.('adReceived', onRecv);
                 adx.off?.('adPlaybackCompleted', onDone);
@@ -71,15 +86,11 @@
               adx.on?.('adReceived', onRecv);
               adx.on?.('adPlaybackCompleted', onDone);
               adx.on?.('noAdFound', onNo);
-
               adx.requestAd?.(opts.format || 'interstitial');
-            } catch {
-              resolve();
-            }
+            } catch { resolve(); }
           });
         }
 
-        // Montage/libtl example
         function showMontage() {
           return new Promise((resolve) => {
             try {
@@ -87,35 +98,20 @@
               if (typeof fn === 'function') {
                 const p = fn({
                   type: 'inApp',
-                  inAppSettings: {
-                    frequency: 1,
-                    capping: 1,
-                    interval: 3600,
-                    timeout: 50,
-                    everyPage: false,
-                  },
+                  inAppSettings: { frequency: 1, capping: 1, interval: 3600, timeout: 50, everyPage: false },
                 });
                 if (p?.then) p.then(() => resolve('done')).catch(() => resolve());
                 else resolve('done');
-              } else {
-                resolve();
-              }
-            } catch {
-              resolve();
-            }
+              } else resolve();
+            } catch { resolve(); }
           });
         }
 
-        // Public API for pages
         window.ads = {
           show(provider, opts = {}) {
             queue.push(() => {
-              if (provider === 'adexium') {
-                return showAdexium(opts); // follows requestAd -> adReceived -> displayAd [web:3707]
-              }
-              if (provider === 'montage') {
-                return showMontage();
-              }
+              if (provider === 'adexium') return showAdexium(opts);
+              if (provider === 'montage') return showMontage();
               return Promise.resolve();
             });
             next();
