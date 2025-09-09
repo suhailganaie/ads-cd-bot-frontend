@@ -1,10 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
-import useTelegram from '../../hooks/useTelegram';
+// src/pages/Earn/Earn.jsx
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import '../../styles/earn.css';
 
 const API = import.meta.env.VITE_API_BASE;
 
 export default function Earn() {
-  const { tgUser } = useTelegram();
+  // Stabilize Telegram webview and fill height
+  useEffect(() => { try { window?.Telegram?.WebApp?.ready?.(); window?.Telegram?.WebApp?.expand?.(); } catch {} }, []); // stable viewport [24]
+
+  const tg = window?.Telegram?.WebApp;
+  const u = tg?.initDataUnsafe?.user || null;
 
   const [cooldown, setCooldown] = useState(0);
   const timer = useRef();
@@ -17,8 +22,8 @@ export default function Earn() {
   // Login + points
   useEffect(() => {
     let alive = true;
-    const telegram_id = tgUser?.id ? String(tgUser.id) : import.meta.env.VITE_DEV_TID || 'guest';
-    const username = tgUser?.username || import.meta.env.VITE_DEV_USERNAME || 'guest';
+    const telegram_id = u?.id ? String(u.id) : import.meta.env.VITE_DEV_TID || 'guest';
+    const username = u?.username || import.meta.env.VITE_DEV_USERNAME || 'guest';
     (async () => {
       try {
         setPtsLoading(true);
@@ -39,10 +44,9 @@ export default function Earn() {
       }
     })();
     return () => { alive = false; };
-  }, [API, tgUser?.id, tgUser?.username]); // [10]
+  }, [API, u?.id, u?.username]); // login flow [25]
 
   const canShow = cooldown === 0;
-
   const startCooldown = () => {
     setCooldown(15);
     clearInterval(timer.current);
@@ -52,7 +56,7 @@ export default function Earn() {
         return s - 1;
       });
     }, 1000);
-  }; // Interstitial frequency capping best practice. [11][12]
+  };
 
   const postWithAuth = async (path) => {
     if (!token) throw new Error('No token');
@@ -62,7 +66,7 @@ export default function Earn() {
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     return res;
-  };
+  }; // Bearer token header pattern. [26]
 
   // Existing network (libtl)
   const popup = async () => {
@@ -89,8 +93,8 @@ export default function Earn() {
     }
   };
 
-  // Adexium: request -> receive -> display; reward on playback completed
-  const runAdexium = async ({ wid, format, rewardPath, rewardDelta, fullScreen = false }) => {
+  // Adexium partner
+  const runAdexium = useCallback(async ({ wid, format, rewardPath, rewardDelta, fullScreen = false }) => {
     if (!canShow || !window.AdexiumWidget) return;
     return new Promise((resolve) => {
       try {
@@ -98,7 +102,7 @@ export default function Earn() {
           wid,
           adFormat: format,
           isFullScreen: fullScreen || false,
-          // debug: true, // enable while testing only
+          // debug: true,
         });
 
         const onReceived = (ad) => adx.displayAd(ad);
@@ -110,72 +114,68 @@ export default function Earn() {
           resolve('done');
         };
         const onNoAd = () => { cleanup(); resolve('noAd'); };
-
         const cleanup = () => {
           adx.off?.('adReceived', onReceived);
           adx.off?.('adPlaybackCompleted', onCompleted);
           adx.off?.('noAdFound', onNoAd);
         };
-
         adx.on?.('adReceived', onReceived);
         adx.on?.('adPlaybackCompleted', onCompleted);
         adx.on?.('noAdFound', onNoAd);
-
-        adx.requestAd?.(format); // immediate attempt for click-to-earn
+        adx.requestAd?.(format);
       } catch {
         resolve();
       }
     });
-  }; // Adexium advanced integration events. [8]
+  }, [canShow, postWithAuth]); // event-based reward [4]
 
-  // New partner
-  const adxMain = () =>
-    runAdexium({
-      wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
-      format: 'interstitial',
-      rewardPath: '/ads/main',
-      rewardDelta: 2,
-      fullScreen: true, // interstitials may require fullscreen in webviews
-    });
+  const adxMain = () => runAdexium({
+    wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
+    format: 'interstitial',
+    rewardPath: '/ads/main',
+    rewardDelta: 2,
+    fullScreen: true,
+  });
 
-  const adxSide = () =>
-    runAdexium({
-      wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
-      format: 'push-like',
-      rewardPath: '/ads/side',
-      rewardDelta: 1,
-    });
+  const adxSide = () => runAdexium({
+    wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
+    format: 'push-like',
+    rewardPath: '/ads/side',
+    rewardDelta: 1,
+  });
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h3>🎯 Earn Points by Watching Ads</h3>
-        <span className="muted">
-          {ptsLoading ? 'Loading…' : ptsError ? '—' : `${totalPoints ?? 0} pts`}
-        </span>
+    <>
+      <div className="earn-card">
+        <div className="earn-head">
+          <h3 className="earn-title">Watch ads to earn</h3>
+          <span className="earn-points">{ptsLoading ? '…' : ptsError ? '—' : `${totalPoints ?? 0} pts`}</span>
+        </div>
+
+        <div className="earn-stack">
+          {/* Rename all to “Watch ad” with reward badges; large capsule buttons */}
+          <button className="earn-btn primary" onClick={popup} disabled={!canShow || !token}>
+            Watch ad • +2 {cooldown ? `• ${cooldown}s` : ''}
+          </button>
+
+          <button className="earn-btn ghost" onClick={interstitial} disabled={!canShow || !token}>
+            Watch ad • +1 {cooldown ? `• ${cooldown}s` : ''}
+          </button>
+
+          <button className="earn-btn primary" onClick={adxMain} disabled={!canShow || !token}>
+            Watch ad • +2 (A) {cooldown ? `• ${cooldown}s` : ''}
+          </button>
+
+          <button className="earn-btn ghost" onClick={adxSide} disabled={!canShow || !token}>
+            Watch ad • +1 (A) {cooldown ? `• ${cooldown}s` : ''}
+          </button>
+        </div>
+
+        <p className="earn-hint">Please wait 15 seconds between ads to prevent abuse.</p>
       </div>
 
-      <div className="ad-buttons">
-        {/* Existing partner */}
-        <button className="ad-button main" onClick={popup} disabled={!canShow || !token}>
-          EARN (2) {cooldown ? `• ${cooldown}s` : ''}
-        </button>
-        <button className="ad-button side" onClick={interstitial} disabled={!canShow || !token}>
-          EARN (1) {cooldown ? `• ${cooldown}s` : ''}
-        </button>
-
-        {/* Adexium partner */}
-        <button className="ad-button main" onClick={adxMain} disabled={!canShow || !token}>
-          EARN (2) – A {cooldown ? `• ${cooldown}s` : ''}
-        </button>
-        <button className="ad-button side" onClick={adxSide} disabled={!canShow || !token}>
-          EARN (1) – A {cooldown ? `• ${cooldown}s` : ''}
-        </button>
-      </div>
-
-      <p className="muted" style={{ marginTop: 8 }}>
-        Please wait 15 seconds between ads to prevent abuse.
-      </p>
-    </div>
+      {/* Safe-area spacer to clear fixed bottom nav */}
+      <div className="page-end-spacer" />
+    </>
   );
 }
