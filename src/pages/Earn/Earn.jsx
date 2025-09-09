@@ -14,6 +14,7 @@ export default function Earn() {
   const [ptsError, setPtsError] = useState(null);
   const [token, setToken] = useState(null);
 
+  // Load points + token
   useEffect(() => {
     let alive = true;
     const telegram_id = tgUser?.id ? String(tgUser.id) : import.meta.env.VITE_DEV_TID || 'guest';
@@ -31,14 +32,14 @@ export default function Earn() {
         if (!alive) return;
         setTotalPoints(data?.user?.points ?? 0);
         setToken(data?.token || null);
-      } catch (e) {
+      } catch {
         if (alive) setPtsError('Failed to load points');
       } finally {
         if (alive) setPtsLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, [API, tgUser?.id, tgUser?.username]); // Auth + points [23]
+  }, [API, tgUser?.id, tgUser?.username]); // Login + points [web:3324]
 
   const canShow = cooldown === 0;
 
@@ -51,7 +52,7 @@ export default function Earn() {
         return s - 1;
       });
     }, 1000);
-  }; // Throttle between ads for UX and anti-abuse. [3][4]
+  }; // Frequency capping for interstitials improves UX and compliance. [web:3748][web:3746]
 
   const postWithAuth = async (path) => {
     if (!token) throw new Error('No token');
@@ -63,13 +64,13 @@ export default function Earn() {
     return res;
   };
 
-  // Existing network: libtl show_9822309
+  // Existing network (libtl)
   const popup = async () => {
     if (!canShow || typeof window.show_9822309 !== 'function') return;
     try {
       await window.show_9822309('pop');
       setTotalPoints(p => (p ?? 0) + 2);
-      await postWithAuth('/ads/main');   // +2 path stays the same
+      await postWithAuth('/ads/main');
       startCooldown();
     } catch {
       setTotalPoints(p => (p ?? 0) - 2);
@@ -81,51 +82,69 @@ export default function Earn() {
     try {
       await window.show_9822309();
       setTotalPoints(p => (p ?? 0) + 1);
-      await postWithAuth('/ads/side');   // +1 path stays the same
+      await postWithAuth('/ads/side');
       startCooldown();
     } catch {
       setTotalPoints(p => (p ?? 0) - 1);
     }
   };
 
-  // New partner A (example: Adexium interstitial) -> map to +2 route
-  const adxMain = async () => {
-    if (!canShow) return;
-    try {
-      if (window.AdexiumWidget) {
-        const w = new window.AdexiumWidget({
-          wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
-          adFormat: 'interstitial'
+  // Adexium helpers: create instance once per click, listen, request, then reward on playback completed
+  const runAdexium = async ({ wid, format, rewardPath, rewardDelta }) => {
+    if (!canShow || !window.AdexiumWidget) return;
+    return new Promise((resolve) => {
+      try {
+        const adx = new window.AdexiumWidget({
+          wid,
+          adFormat: format,
+          // debug: true, // enable during testing only
         });
-        // If no explicit promise, just fire and continue
-        if (typeof w.autoMode === 'function') w.autoMode();
-      }
-      setTotalPoints(p => (p ?? 0) + 2);
-      await postWithAuth('/ads/main');   // reuse +2 backend
-      startCooldown();
-    } catch {
-      setTotalPoints(p => (p ?? 0) - 2);
-    }
-  };
 
-  // New partner B (example: Adexium push-like) -> map to +1 route
-  const adxSide = async () => {
-    if (!canShow) return;
-    try {
-      if (window.AdexiumWidget) {
-        const w = new window.AdexiumWidget({
-          wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
-          adFormat: 'push-like'
-        });
-        if (typeof w.autoMode === 'function') w.autoMode();
+        const onReceived = (ad) => {
+          adx.displayAd(ad);
+        };
+        const onCompleted = async () => {
+          adx.off?.('adReceived', onReceived);
+          adx.off?.('adPlaybackCompleted', onCompleted);
+          adx.off?.('noAdFound', onNoAd);
+          // reward after confirmed completion
+          setTotalPoints(p => (p ?? 0) + rewardDelta);
+          try { await postWithAuth(rewardPath); } catch { setTotalPoints(p => (p ?? 0) - rewardDelta); }
+          startCooldown();
+          resolve('done');
+        };
+        const onNoAd = () => {
+          adx.off?.('adReceived', onReceived);
+          adx.off?.('adPlaybackCompleted', onCompleted);
+          adx.off?.('noAdFound', onNoAd);
+          resolve('noAd');
+        };
+
+        adx.on?.('adReceived', onReceived);
+        adx.on?.('adPlaybackCompleted', onCompleted);
+        adx.on?.('noAdFound', onNoAd);
+
+        adx.requestAd?.(format); // request immediately for click-to-earn
+      } catch {
+        resolve();
       }
-      setTotalPoints(p => (p ?? 0) + 1);
-      await postWithAuth('/ads/side');   // reuse +1 backend
-      startCooldown();
-    } catch {
-      setTotalPoints(p => (p ?? 0) - 1);
-    }
-  };
+    });
+  }; // Matches Adexium advanced integration events and flow. [web:3707]
+
+  // New partner buttons mapped to existing backend
+  const adxMain = () => runAdexium({
+    wid: 'b6509d9f-3faf-4e19-af77-ae292cde7eb6',
+    format: 'interstitial',
+    rewardPath: '/ads/main',
+    rewardDelta: 2
+  });
+
+  const adxSide = () => runAdexium({
+    wid: '523e4b9e-f0a7-43c2-8e74-285d4d42bdc9',
+    format: 'push-like',
+    rewardPath: '/ads/side',
+    rewardDelta: 1
+  });
 
   return (
     <div className="card">
@@ -137,7 +156,7 @@ export default function Earn() {
       </div>
 
       <div className="ad-buttons">
-        {/* Existing partner buttons */}
+        {/* Existing partner */}
         <button className="ad-button main" onClick={popup} disabled={!canShow || !token}>
           EARN (2) {cooldown ? `• ${cooldown}s` : ''}
         </button>
@@ -145,7 +164,7 @@ export default function Earn() {
           EARN (1) {cooldown ? `• ${cooldown}s` : ''}
         </button>
 
-        {/* New partner buttons (mapped to same backend endpoints) */}
+        {/* Adexium partner mapped to same endpoints */}
         <button className="ad-button main" onClick={adxMain} disabled={!canShow || !token}>
           EARN (2) – A {cooldown ? `• ${cooldown}s` : ''}
         </button>
