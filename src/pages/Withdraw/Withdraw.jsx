@@ -174,7 +174,7 @@ export default function Withdraw() {
       </form>
 
       <p className="wd-hint muted">
-        {rules.ratio} points = 1 token. Displayed to 3 decimals; min {rules.min_tokens} tokens per request.
+        {rules.ratio} points = 1 token. ; min {rules.min_tokens} tokens per request.
       </p>
     </main>
   );
