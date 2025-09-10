@@ -10,7 +10,7 @@ export default function Withdraw() {
 
   return (
     <>
-      .</p>
+      </p>
         <div className="wd-coming">
           <div className="wd-badge">Coming soon</div>
           <p className="wd-note">
