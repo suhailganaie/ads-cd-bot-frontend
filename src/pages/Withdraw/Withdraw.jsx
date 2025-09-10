@@ -14,7 +14,7 @@ export default function Withdraw() {
         <h2 className="wd-title">Withdraw</h2>
 
         <div className="wd-coming">
-          <div className="wd-badge">Coming soon</div>
+          <div className="wd-badge"></div>
           <p className="wd-note">
             Withdrawals will open soon.
           </p>
