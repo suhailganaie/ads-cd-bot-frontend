@@ -10,11 +10,13 @@ export default function Withdraw() {
 
   return (
     <>
-      </p>
+      <div className="wd-coming-card">
+        <h2 className="wd-title">Withdraw</h2>
+
         <div className="wd-coming">
           <div className="wd-badge">Coming soon</div>
           <p className="wd-note">
-            Withdrawals will open after the token launch. Please check back later.
+            Withdrawals will open soon.
           </p>
         </div>
       </div>
