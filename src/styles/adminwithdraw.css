@@ -1,0 +1,81 @@
+/* src/styles/admin-withdraw.css */
+/* Minimal glass card using app gutters; relies on App.css for colors and variables. [2] */
+
+.aw-card {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto 8px;
+  box-sizing: border-box;
+  padding: 20px 14px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.22);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    0 12px 36px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.aw-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.aw-title { margin: 0; font-size: clamp(18px, 2.8vw, 26px); font-weight: 800; }
+
+.aw-quick {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.aw-input {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+}
+
+.aw-btn {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  font-weight: 800;
+  cursor: pointer;
+}
+.aw-btn.primary {
+  background: linear-gradient(180deg, var(--tg-theme-button-color, #2481cc), #1b6eac);
+  color: var(--tg-theme-button-text-color, #fff);
+  box-shadow: var(--depth-2);
+}
+.aw-btn.ghost { opacity: .92; }
+.aw-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.aw-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+
+.aw-item {
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.14);
+}
+
+.aw-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.aw-id { font-weight: 800; }
+.aw-amt { font-weight: 800; opacity: .95; }
+
+.aw-meta { margin-top: 6px; display: grid; gap: 4px; color: var(--muted); word-break: break-all; }
+.aw-actions { margin-top: 10px; display: grid; grid-auto-flow: column; gap: 8px; }
+
+.aw-empty { text-align: center; color: var(--muted); padding: 12px; }
+
+@media (max-width: 520px) {
+  .aw-quick { grid-template-columns: 1fr 1fr; }
+  .aw-actions { grid-auto-flow: row; }
+  .aw-btn { width: 100%; height: 44px; }
+}
