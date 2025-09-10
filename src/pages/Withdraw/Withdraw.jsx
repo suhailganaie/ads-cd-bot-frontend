@@ -10,10 +10,7 @@ export default function Withdraw() {
 
   return (
     <>
-      <div className="wd-coming-card">
-        <h2 className="wd-title">Withdraw</h2>
-        <p className="wd-sub">Send tokens to a BEP20 (ERC20-format) address.</p>
-
+      .</p>
         <div className="wd-coming">
           <div className="wd-badge">Coming soon</div>
           <p className="wd-note">
