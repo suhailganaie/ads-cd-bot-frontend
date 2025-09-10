@@ -3,40 +3,38 @@ import React, { useEffect, useMemo, Suspense, useState, useCallback } from 'reac
 import { BrowserRouter, NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/App.css';
 
-// Lazy pages (adjust paths to your project)
+// Lazy pages
 const Home = React.lazy(() => import('./pages/Home/Home'));
 const Earn = React.lazy(() => import('./pages/Earn/Earn'));
 const Tasks = React.lazy(() => import('./pages/Tasks/Tasks'));
 const Invite = React.lazy(() => import('./pages/Invite/Invite'));
 const Withdraw = React.lazy(() => import('./pages/Withdraw/Withdraw'));
-const AdminWithdraw = React.lazy(() => import('./pages/AdminWithdraw/AdminWithdraw')); // new admin page
+const AdminWithdraw = React.lazy(() => import('./pages/AdminWithdraw/AdminWithdraw')); // admin page
 
 export default function App() {
   const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
 
-  // User + role from login (optional)
   const [authUser, setAuthUser] = useState(null);
   const [token, setToken] = useState(null);
 
-  // Initialize TMA viewport + safe area and expand
+  // Init Telegram Mini App viewport + safe area and expand
   useEffect(() => {
     try {
       tg?.ready?.();
       tg?.expand?.();
+
       const applyInsets = () => {
-        // Read insets if present (Bot API 8.0+)
         const s = tg?.contentSafeAreaInset || tg?.safeAreaInset || { bottom: 0 };
-        // Update CSS var used by App.css
         document.documentElement.style.setProperty('--tg-safe-bottom', String(s.bottom || 0) + 'px');
       };
       const applyHeight = () => {
         const h = tg?.viewportStableHeight || tg?.viewportHeight || 0;
         document.documentElement.style.setProperty('--tg-viewport-stable-height', h ? h + 'px' : '100vh');
       };
+
       applyInsets();
       applyHeight();
 
-      // Subscribe to official events
       tg?.onEvent?.('safeAreaChanged', applyInsets);
       tg?.onEvent?.('contentSafeAreaChanged', applyInsets);
       tg?.onEvent?.('viewportChanged', applyHeight);
@@ -47,9 +45,9 @@ export default function App() {
         tg?.offEvent?.('viewportChanged', applyHeight);
       };
     } catch {}
-  }, [tg]); // Uses documented events to keep layout correct. [10]
+  }, [tg]); // Official TMA events keep layout correct. [web:4106][web:4430]
 
-  // Lightweight login to know role; normal users still proceed without admin UI
+  // Lightweight login to learn admin role (server claim or allowlist)
   useEffect(() => {
     const API = import.meta.env?.VITE_API_BASE;
     if (!API) return;
@@ -65,7 +63,6 @@ export default function App() {
         });
         const data = await res.json().catch(() => ({}));
         setToken(data?.token || null);
-        // Prefer server role; fallback to allowlist
         const claimAdmin = Boolean(data?.user?.admin);
         const allow = new Set((import.meta.env?.VITE_ADMIN_TIDS || '').split(',').map(s => s.trim()).filter(Boolean));
         const isAdmin = claimAdmin || allow.has(String(u.id));
@@ -74,11 +71,11 @@ export default function App() {
         setAuthUser(null);
       }
     })();
-  }, [tg]);
+  }, [tg]); // Role gate for admin UI. [web:4422]
 
   const isAdmin = Boolean(authUser?.admin);
 
-  // Simple guard component
+  // Simple guard for admin-only routes
   const AdminGuard = useCallback(
     ({ children }) => (isAdmin ? children : <Navigate to="/" replace />),
     [isAdmin]
@@ -93,16 +90,24 @@ export default function App() {
             <h1 className="brand-title">ADS BOT</h1>
             <p className="brand-subtitle">Ad Rewards Platform</p>
           </div>
+
+          {/* Top-right Admin action (only for admins) */}
+          {isAdmin && (
+            <div className="hero-actions">
+              <NavLink to="/admin/withdrawals" className="hero-action-link">
+                Admin
+              </NavLink>
+            </div>
+          )}
         </header>
 
-        <Suspense fallback={<div className="skeleton-page" />}>
+        <Suspense fallback={<div className="skeleton-page">Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/earn" element={<Earn />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/invite" element={<Invite />} />
             <Route path="/withdraw" element={<Withdraw />} />
-            {/* Admin-only route (hidden for non-admins) */}
             <Route
               path="/admin/withdrawals"
               element={
@@ -115,6 +120,7 @@ export default function App() {
           </Routes>
         </Suspense>
 
+        {/* Bottom nav for everyone (no admin here) */}
         <nav className="bottom-nav">
           <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span className="nav-dot" />
@@ -136,14 +142,6 @@ export default function App() {
             <span className="nav-dot" />
             <span className="nav-label">Withdraw</span>
           </NavLink>
-
-          {/* Optional: show Admin tab only for admins; guard still enforces security */}
-          {isAdmin && (
-            <NavLink to="/admin/withdrawals" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-              <span className="nav-dot" />
-              <span className="nav-label">Admin</span>
-            </NavLink>
-          )}
         </nav>
       </div>
     </BrowserRouter>
