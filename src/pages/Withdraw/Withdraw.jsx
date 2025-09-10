@@ -11,12 +11,11 @@ export default function Withdraw() {
   return (
     <>
       <div className="wd-coming-card">
-        <h2 className="wd-title">Withdraw</h2>
+        <h2 className="wd-title">Withdrawls will open soon</h2>
 
         <div className="wd-coming">
           <div className="wd-badge"></div>
           <p className="wd-note">
-            Withdrawals will open soon.
           </p>
         </div>
       </div>
