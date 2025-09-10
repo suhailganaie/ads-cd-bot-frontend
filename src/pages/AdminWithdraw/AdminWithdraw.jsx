@@ -1,83 +1,149 @@
-const API = import.meta.env.VITE_API_BASE;
+// src/App.jsx
+import React, { useEffect, useMemo, Suspense, useState, useCallback } from 'react';
+import { BrowserRouter, NavLink, Routes, Route, Navigate } from 'react-router-dom';
+import './styles/App.css';
 
-export default function AdminWithdraw() {
-  const tg = window?.Telegram?.WebApp;
-  const u = tg?.initDataUnsafe?.user;
-  const [token,setToken] = useState(null);
-  const [isAdmin,setIsAdmin] = useState(false);
-  const [rows,setRows] = useState([]);
-  const [id,setId] = useState('');
-  const [reason,setReason] = useState('');
+// Lazy pages
+const Home = React.lazy(() => import('./pages/Home/Home'));
+const Earn = React.lazy(() => import('./pages/Earn/Earn'));
+const Tasks = React.lazy(() => import('./pages/Tasks/Tasks'));
+const Invite = React.lazy(() => import('./pages/Invite/Invite'));
+const Withdraw = React.lazy(() => import('./pages/Withdraw/Withdraw'));
+const AdminWithdraw = React.lazy(() => import('./pages/AdminWithdraw/AdminWithdraw')); // admin page
 
-  useEffect(() => { try { tg?.ready?.(); tg?.expand?.(); } catch {} }, []); // webview ok [7]
+export default function App() {
+  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
 
+  const [authUser, setAuthUser] = useState(null);
+  const [token, setToken] = useState(null);
+
+  // Init Telegram Mini App viewport + safe area and expand
   useEffect(() => {
+    try {
+      tg?.ready?.();
+      tg?.expand?.();
+
+      const applyInsets = () => {
+        const s = tg?.contentSafeAreaInset || tg?.safeAreaInset || { bottom: 0 };
+        document.documentElement.style.setProperty('--tg-safe-bottom', String(s.bottom || 0) + 'px');
+      };
+      const applyHeight = () => {
+        const h = tg?.viewportStableHeight || tg?.viewportHeight || 0;
+        document.documentElement.style.setProperty('--tg-viewport-stable-height', h ? h + 'px' : '100vh');
+      };
+
+      applyInsets();
+      applyHeight();
+
+      tg?.onEvent?.('safeAreaChanged', applyInsets);
+      tg?.onEvent?.('contentSafeAreaChanged', applyInsets);
+      tg?.onEvent?.('viewportChanged', applyHeight);
+
+      return () => {
+        tg?.offEvent?.('safeAreaChanged', applyInsets);
+        tg?.offEvent?.('contentSafeAreaChanged', applyInsets);
+        tg?.offEvent?.('viewportChanged', applyHeight);
+      };
+    } catch {}
+  }, [tg]); // Official TMA events keep layout correct. [web:4106][web:4430]
+
+  // Lightweight login to learn admin role (server claim or allowlist)
+  useEffect(() => {
+    const API = import.meta.env?.VITE_API_BASE;
+    if (!API) return;
+    const u = tg?.initDataUnsafe?.user;
+    if (!u?.id) return;
+
     (async () => {
-      // login
-      const res = await fetch(`${API}/auth/login`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ telegram_id: String(u?.id||''), username: u?.username||'' })
-      });
-      const data = await res.json().catch(() => ({}));
-      setToken(data?.token||null);
-      // decide admin: prefer claim, else allowlist
-      const claimAdmin = Boolean(data?.user?.admin);
-      const allow = new Set((import.meta.env.VITE_ADMIN_TIDS||'').split(',').map(s=>s.trim()).filter(Boolean));
-      setIsAdmin(claimAdmin || allow.has(String(u?.id||'')));
+      try {
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telegram_id: String(u.id), username: u.username || '' })
+        });
+        const data = await res.json().catch(() => ({}));
+        setToken(data?.token || null);
+        const claimAdmin = Boolean(data?.user?.admin);
+        const allow = new Set((import.meta.env?.VITE_ADMIN_TIDS || '').split(',').map(s => s.trim()).filter(Boolean));
+        const isAdmin = claimAdmin || allow.has(String(u.id));
+        setAuthUser({ telegram_id: String(u.id), username: u.username || '', admin: isAdmin });
+      } catch {
+        setAuthUser(null);
+      }
     })();
-  }, [API,u?.id,u?.username]); // token + role [5]
+  }, [tg]); // Role gate for admin UI. [web:4422]
 
-  const authHeaders = useMemo(() => token ? { Authorization:`Bearer ${token}` } : {}, [token]); // bearer [5]
+  const isAdmin = Boolean(authUser?.admin);
 
-  const refresh = useCallback(async () => {
-    const r = await fetch(`${API}/withdrawals/pending?limit=50&offset=0`, { headers: authHeaders });
-    const d = await r.json().catch(()=>({}));
-    setRows(Array.isArray(d?.items)? d.items : []);
-  }, [API,authHeaders]); // read queue [3]
-
-  useEffect(() => { if (isAdmin && token) refresh(); }, [isAdmin, token, refresh]); // load list [3]
-
-  if (!isAdmin) return null; // do not render admin UI for non-admins [3]
-
-  const approve = async (wid) => {
-    await fetch(`${API}/withdrawals/${wid}/approve`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders } });
-    refresh();
-  };
-  const reject = async (wid, why) => {
-    await fetch(`${API}/withdrawals/${wid}/reject`, { method:'POST', headers: { 'Content-Type':'application/json', ...authHeaders }, body: JSON.stringify({ reason: why||undefined }) });
-    refresh();
-  };
+  // Simple guard for admin-only routes
+  const AdminGuard = useCallback(
+    ({ children }) => (isAdmin ? children : <Navigate to="/" replace />),
+    [isAdmin]
+  );
 
   return (
-    <div className="panel">
-      <h3>Withdraw admin</h3>
+    <BrowserRouter>
+      <div className="app">
+        <header className="app-hero">
+          <div className="hero-glow" />
+          <div className="hero-content">
+            <h1 className="brand-title">ADS BOT</h1>
+            <p className="brand-subtitle">Ad Rewards Platform</p>
+          </div>
 
-      <div className="panel-foot">
-        <input className="input" placeholder="Withdrawal ID" value={id} onChange={e=>setId(e.target.value)} />
-        <button className="btn primary" onClick={()=>approve(id)}>Approve</button>
-        <input className="input" placeholder="Reason (optional)" value={reason} onChange={e=>setReason(e.target.value)} />
-        <button className="btn" onClick={()=>reject(id, reason)}>Reject</button>
-        <button className="btn ghost" onClick={refresh}>Refresh</button>
+          {/* Top-right Admin action (only for admins) */}
+          {isAdmin && (
+            <div className="hero-actions">
+              <NavLink to="/admin/withdrawals" className="hero-action-link">
+                Admin
+              </NavLink>
+            </div>
+          )}
+        </header>
+
+        <Suspense fallback={<div className="skeleton-page">Loading…</div>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/earn" element={<Earn />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/invite" element={<Invite />} />
+            <Route path="/withdraw" element={<Withdraw />} />
+            <Route
+              path="/admin/withdrawals"
+              element={
+                <AdminGuard>
+                  <AdminWithdraw token={token} />
+                </AdminGuard>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+
+        {/* Bottom nav for everyone (no admin here) */}
+        <nav className="bottom-nav">
+          <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-dot" />
+            <span className="nav-label">Home</span>
+          </NavLink>
+          <NavLink to="/earn" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-dot" />
+            <span className="nav-label">Earn</span>
+          </NavLink>
+          <NavLink to="/tasks" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-dot" />
+            <span className="nav-label">Tasks</span>
+          </NavLink>
+          <NavLink to="/invite" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-dot" />
+            <span className="nav-label">Invite</span>
+          </NavLink>
+          <NavLink to="/withdraw" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-dot" />
+            <span className="nav-label">Withdraw</span>
+          </NavLink>
+        </nav>
       </div>
-
-      <ul className="task-list" style={{ marginTop:12 }}>
-        {rows.map(r => (
-          <li key={r.id} className="task">
-            <div className="task-main">
-              <span>ID #{r.id}</span>
-              <span>{r.tokens} tokens</span>
-            </div>
-            <div className="task-meta">
-              <div>{r.address}</div>
-              <div>@{r.username || r.telegram_id}</div>
-            </div>
-            <div className="task-actions">
-              <button className="btn primary" onClick={()=>approve(r.id)}>Approve</button>
-              <button className="btn" onClick={()=>reject(r.id)}>Reject</button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </BrowserRouter>
   );
 }
