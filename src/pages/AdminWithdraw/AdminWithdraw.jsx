@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { BrowserRouter, NavLink, Routes, Route, Navigate } from 'react-router-dom';
-import './styles/App.css';
+import '../../styles/App.css';
 
 // Lazy pages
 const Home = React.lazy(() => import('./pages/Home/Home'));
