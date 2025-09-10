@@ -1,14 +1,17 @@
 /* src/styles/App.css */
 
-/* Viewport + safe-area for Telegram mini-apps */
+/* Viewport + safe-area for Mini Apps */
 :root {
-  /* Height stable token from TMA; fallback to full viewport */
+  /* Telegram-provided stable height; fallback to full viewport */
+  --tg-viewport-stable-height: 100vh;
   --vh-stable: var(--tg-viewport-stable-height, 100vh);
-  /* Bottom safe space: physical inset or webview shrink delta */
-  --safe-b: max(
-    env(safe-area-inset-bottom, 0px),
-    calc(100vh - var(--tg-viewport-stable-height, 100vh))
-  );
+
+  /* Device safe area bottom */
+  --safe-raw-b: env(safe-area-inset-bottom, 0px); /* has units per spec */ /* [web:4218] */
+  /* Webview shrink delta (when viewport height collapses) */
+  --shrink-b: calc(100vh - var(--tg-viewport-stable-height, 100vh));
+  /* Effective bottom inset */
+  --safe-b: max(var(--safe-raw-b), var(--shrink-b));
 
   /* Brand + glass palette */
   --bg1: #2a31ff;
@@ -24,9 +27,9 @@
   --depth-1: 0 12px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
   --depth-2: 0 16px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
   --depth-3: 0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
-} /* Uses env(safe-area-inset-bottom) to avoid bottom bar overlap. [2] */
+} /* Use env(safe-area-inset-bottom) with calc()/max() for reliable spacing. [web:4218][web:4264] */
 
-html, body, #root { height: 100%; } /* Ensures full-height layout within the webview. [3] */
+html, body, #root { height: 100%; } /* Full-height layout. [web:4469] */
 
 body {
   margin: 0;
@@ -38,17 +41,18 @@ body {
     linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 70%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-} /* HiDPI friendly gradient with subtle glows. [3] */
+}
 
+/* Shell */
 .app {
   max-width: 820px;
   margin: 0 auto;
   min-height: var(--vh-stable);
   padding: 16px 14px calc(96px + var(--safe-b));
   box-sizing: border-box;
-} /* Bottom padding keeps content clear of the fixed nav across devices. [2] */
+} /* Bottom padding keeps content clear of fixed nav. [web:4218] */
 
-/* Hero header with glow */
+/* Hero header with glow and top-right actions */
 .app-hero {
   position: relative;
   border-radius: 24px;
@@ -70,6 +74,23 @@ body {
 .brand-title { margin: 0 0 4px; letter-spacing: .5px; }
 .brand-subtitle { margin: 0; color: var(--muted); }
 
+/* Top-right hero actions (Admin) */
+.hero-actions {
+  position: absolute; top: 10px; right: 12px; z-index: 2;
+  display: flex; gap: 8px;
+}
+.hero-action-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 12px; border-radius: 999px;
+  font-weight: 800; letter-spacing: .2px; color: var(--text); text-decoration: none;
+  border: 1px solid rgba(255,255,255,.18);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  box-shadow: var(--depth-1);
+  transition: transform 120ms ease, filter 140ms ease;
+}
+.hero-action-link:hover { transform: translateY(-1px); filter: brightness(1.03); }
+.hero-action-link:active { transform: translateY(0); filter: brightness(0.96); }
+
 /* Panels, tiles, cards */
 .panel {
   background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
@@ -86,9 +107,7 @@ body {
 .panel-body.rich { line-height: 1.6; letter-spacing: .2px; }
 .panel-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 
-.grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;
-}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 .tile {
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
   border: 1px solid var(--glass-strong);
@@ -144,7 +163,7 @@ body {
   border-top: 1px solid rgba(255,255,255,.10);
   backdrop-filter: blur(16px);
   z-index: 1000;
-} /* Fixed bar with padding for device insets to avoid overlap. [2] */
+} /* The calc() ensures padding grows with device insets. [web:4218][web:4264] */
 
 .nav-item {
   position: relative;
@@ -177,4 +196,4 @@ body {
 }
 .textarea { height: auto; min-height: 92px; padding-top: 10px; padding-bottom: 10px; }
 .form .btn-submit { margin-top: 4px; }
-.section-end-spacer { height: calc(16px + var(--safe-b)); }
+.section-end-spacer { height: calc(16px + var(--safe-b)); } /* space for bottom nav/inset. [web:4218] */
