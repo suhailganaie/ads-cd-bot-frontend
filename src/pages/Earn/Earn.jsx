@@ -72,7 +72,7 @@ export default function Earn() {
   const popup = async () => {
     if (!canShow || typeof window.show_9890118 !== 'function') return;
     try {
-      await window.show_9822309('pop');
+      await window.show_9890118('pop');
       setTotalPoints((p) => (p ?? 0) + 2);
       await postWithAuth('/ads/main');
       startCooldown();
