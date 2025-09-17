@@ -70,7 +70,7 @@ export default function Earn() {
 
   // Existing network (libtl)
   const popup = async () => {
-    if (!canShow || typeof window.show_9822309 !== 'function') return;
+    if (!canShow || typeof window.show_9890118 !== 'function') return;
     try {
       await window.show_9822309('pop');
       setTotalPoints((p) => (p ?? 0) + 2);
@@ -82,9 +82,9 @@ export default function Earn() {
   };
 
   const interstitial = async () => {
-    if (!canShow || typeof window.show_9822309 !== 'function') return;
+    if (!canShow || typeof window.show_9890118 !== 'function') return;
     try {
-      await window.show_9822309();
+      await window.show_9890118();
       setTotalPoints((p) => (p ?? 0) + 1);
       await postWithAuth('/ads/side');
       startCooldown();
