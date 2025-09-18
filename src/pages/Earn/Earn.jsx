@@ -155,19 +155,19 @@ export default function Earn() {
         <div className="earn-stack">
           {/* Rename all to “Watch ad” with reward badges; large capsule buttons */}
           <button className="earn-btn primary" onClick={popup} disabled={!canShow || !token}>
-            Watch ad • +2 {cooldown ? `• ${cooldown}s` : ''}
+            WATCH&EARN {cooldown ? `• ${cooldown}s` : ''}
           </button>
 
           <button className="earn-btn ghost" onClick={interstitial} disabled={!canShow || !token}>
-            Watch ad • +1 {cooldown ? `• ${cooldown}s` : ''}
+            WATCH&EARN {cooldown ? `• ${cooldown}s` : ''}
           </button>
 
           <button className="earn-btn primary" onClick={adxMain} disabled={!canShow || !token}>
-            Watch ad • +2 (A) {cooldown ? `• ${cooldown}s` : ''}
+            WATCH&EARN {cooldown ? `• ${cooldown}s` : ''}
           </button>
 
           <button className="earn-btn ghost" onClick={adxSide} disabled={!canShow || !token}>
-            Watch ad • +1 (A) {cooldown ? `• ${cooldown}s` : ''}
+            WATCH&EARN {cooldown ? `• ${cooldown}s` : ''}
           </button>
         </div>
 
